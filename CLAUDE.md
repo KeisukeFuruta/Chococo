@@ -42,7 +42,7 @@
 
 ### PR・マージルール
 
-- **`main` への直接プッシュは禁止**
+- **`main` への直接プッシュは禁止**（GitHub側でブロック済み）
 - 作業は必ず feature/fix/chore/docs ブランチで行い、PR経由でマージする
 - PRタイトル形式: `[Feature] #12 記録CRUD APIを追加`（種別・イシュー番号・内容）
 - PRテンプレート（`.github/PULL_REQUEST_TEMPLATE.md`）のチェックリストをすべて満たしてからマージする
