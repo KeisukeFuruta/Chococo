@@ -2,14 +2,17 @@ import styles from "./AppHeader.module.css";
 
 interface AppHeaderProps {
   title: string;
+  onLogoClick: () => void;
   onAdd?: () => void;
   onLogout: () => void;
 }
 
-export function AppHeader({ title, onAdd, onLogout }: AppHeaderProps) {
+export function AppHeader({ title, onLogoClick, onAdd, onLogout }: AppHeaderProps) {
   return (
     <header className={styles.header}>
-      <span className={styles.title}>{title}</span>
+      <button type="button" className={styles.logoButton} onClick={onLogoClick}>
+        {title}
+      </button>
       <div className={styles.actions}>
         {onAdd && (
           <button
@@ -21,13 +24,8 @@ export function AppHeader({ title, onAdd, onLogout }: AppHeaderProps) {
             ＋
           </button>
         )}
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={onLogout}
-          aria-label="ログアウト"
-        >
-          🚪
+        <button type="button" className={styles.logoutButton} onClick={onLogout}>
+          🚪 ログアウト
         </button>
       </div>
     </header>

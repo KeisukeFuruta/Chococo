@@ -94,6 +94,7 @@ export default function App() {
           <>
             <AppHeader
               title="Chococo"
+              onLogoClick={() => setScreen({ kind: "main", tab: "pairing" })}
               onAdd={
                 screen.tab === "records"
                   ? () => setScreen({ kind: "recordCreate", origin: "records" })
@@ -114,6 +115,9 @@ export default function App() {
               <RecordsCalendarScreen
                 records={records}
                 onSelectRecord={(recordId) => setScreen({ kind: "recordDetail", recordId })}
+                onCreateForDate={(dateKey) =>
+                  setScreen({ kind: "recordCreate", origin: "records", presetDate: dateKey })
+                }
               />
             )}
             <TabBar activeTab={screen.tab} onChange={(tab) => setScreen({ kind: "main", tab })} />
@@ -126,7 +130,7 @@ export default function App() {
             title="記録を作成"
             initialValues={{
               sweetsName: screen.suggestion?.sweetsName ?? "",
-              date: todayDateKey(),
+              date: screen.presetDate ?? todayDateKey(),
               memo: "",
             }}
             initialSuggestion={screen.suggestion}

@@ -34,6 +34,7 @@ export type AppScreen =
       kind: "recordCreate";
       origin: MainTab;
       suggestion?: PairingSuggestionResult;
+      presetDate?: string;
     }
   | { kind: "recordDetail"; recordId: string }
   | { kind: "recordEdit"; recordId: string };

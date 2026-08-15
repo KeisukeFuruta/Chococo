@@ -6,9 +6,14 @@ import styles from "./RecordsCalendarScreen.module.css";
 interface RecordsCalendarScreenProps {
   records: SweetsRecord[];
   onSelectRecord: (recordId: string) => void;
+  onCreateForDate: (dateKey: string) => void;
 }
 
-export function RecordsCalendarScreen({ records, onSelectRecord }: RecordsCalendarScreenProps) {
+export function RecordsCalendarScreen({
+  records,
+  onSelectRecord,
+  onCreateForDate,
+}: RecordsCalendarScreenProps) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -49,6 +54,8 @@ export function RecordsCalendarScreen({ records, onSelectRecord }: RecordsCalend
       onSelectRecord(dayRecords[0].id);
     } else if (dayRecords.length > 1) {
       setPickerDateKey(dateKey);
+    } else {
+      onCreateForDate(dateKey);
     }
   }
 
@@ -90,11 +97,12 @@ export function RecordsCalendarScreen({ records, onSelectRecord }: RecordsCalend
               <button
                 type="button"
                 key={key}
-                className={`${styles.cell} ${hasRecord ? styles.hasRecord : ""}`}
+                className={`${styles.cell} ${hasRecord ? styles.hasRecord : styles.emptyDay}`}
                 onClick={() => handleCellClick(dateKey, dayRecords)}
-                disabled={!hasRecord}
+                aria-label={hasRecord ? undefined : `${dateKey}の記録を作成`}
               >
                 <span className={styles.dayNumber}>{day}</span>
+                {!hasRecord && <span className={styles.addMark}>＋</span>}
                 {hasRecord && (
                   <div className={styles.thumb}>
                     {dayRecords[0].photoDataUrl ? (
