@@ -69,28 +69,6 @@
   cursor: pointer;
 }
 
-.emptyDay:hover,
-.emptyDay:focus-visible {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-}
-
-.emptyDay:hover .addMark,
-.emptyDay:focus-visible .addMark {
-  opacity: 1;
-}
-
-.addMark {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-accent);
-  font-size: 1rem;
-  opacity: 0.35;
-  transition: opacity 0.15s ease;
-}
-
 .thumb {
   width: 100%;
   flex: 1;

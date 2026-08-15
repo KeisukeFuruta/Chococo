@@ -102,7 +102,6 @@ export function RecordsCalendarScreen({
                 aria-label={hasRecord ? undefined : `${dateKey}の記録を作成`}
               >
                 <span className={styles.dayNumber}>{day}</span>
-                {!hasRecord && <span className={styles.addMark}>＋</span>}
                 {hasRecord && (
                   <div className={styles.thumb}>
                     {dayRecords[0].photoDataUrl ? (

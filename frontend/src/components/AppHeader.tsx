@@ -25,7 +25,7 @@ export function AppHeader({ title, onLogoClick, onAdd, onLogout }: AppHeaderProp
           </button>
         )}
         <button type="button" className={styles.logoutButton} onClick={onLogout}>
-          🚪 ログアウト
+          ログアウト
         </button>
       </div>
     </header>
