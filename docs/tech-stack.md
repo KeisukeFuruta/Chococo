@@ -28,7 +28,7 @@
 | 項目 | 技術 | 備考 |
 |---|---|---|
 | 言語 | Java 21 (LTS) | |
-| フレームワーク | Spring Boot 3.5系 | |
+| フレームワーク | Spring Boot 4.1系 | 実装着手時点（2026年8月15日）でSpring Initializrが生成可能な最小バージョンが4.0以降になっていたため、当初予定の3.5系から変更した |
 | API スタイル | REST API | |
 | O/R マッパー | Spring Data JPA (Hibernate) | |
 | ビルドツール | Gradle (Groovy DSL) | |
@@ -71,4 +71,4 @@
 
 ## 残っている未確定事項
 
-- Gradle・Spring Bootの正確なパッチバージョンは実装着手時に最新の安定版を採用する
+- Gradle・Spring Bootの正確なパッチバージョンは実装着手時に最新の安定版を採用する（2026年8月15日時点：Spring Boot 4.1.0、Gradle 9.5.1）
