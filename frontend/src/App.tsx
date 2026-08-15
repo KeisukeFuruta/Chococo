@@ -32,9 +32,13 @@ export default function App() {
     setScreen({ kind: "login" });
   }
 
+  function handleUsageConsumed() {
+    setUsageRemaining((remaining) => Math.max(0, remaining - 1));
+  }
+
   function handleSuggestionGenerated(suggestion: PairingSuggestionResult) {
     setLastSuggestion(suggestion);
-    setUsageRemaining((remaining) => Math.max(0, remaining - 1));
+    handleUsageConsumed();
   }
 
   function handleCreateRecord(values: RecordFormValues, suggestion?: PairingSuggestionResult) {
@@ -125,9 +129,11 @@ export default function App() {
               date: todayDateKey(),
               memo: "",
             }}
-            suggestion={screen.suggestion}
+            initialSuggestion={screen.suggestion}
+            usageRemaining={usageRemaining}
+            onGenerateSuggestion={handleUsageConsumed}
             onBack={() => setScreen({ kind: "main", tab: screen.origin })}
-            onSubmit={(values) => handleCreateRecord(values, screen.suggestion)}
+            onSubmit={(values, suggestion) => handleCreateRecord(values, suggestion)}
           />
         );
 
@@ -162,7 +168,7 @@ export default function App() {
               memo: record.memo ?? "",
               photoDataUrl: record.photoDataUrl,
             }}
-            suggestion={record.pairing}
+            initialSuggestion={record.pairing}
             onBack={() => setScreen({ kind: "recordDetail", recordId: record.id })}
             onSubmit={(values) => handleUpdateRecord(record.id, values)}
           />

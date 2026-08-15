@@ -8,6 +8,7 @@
 }
 
 .backButton {
+  grid-column: 1;
   justify-self: start;
   background: transparent;
   border: none;
@@ -17,10 +18,12 @@
 }
 
 .title {
+  grid-column: 2;
   justify-self: center;
   font-weight: 700;
 }
 
 .rightSlot {
+  grid-column: 3;
   justify-self: end;
 }

@@ -98,7 +98,7 @@
   padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .aiBlockTitle {
@@ -110,6 +110,68 @@
 .aiBeanName {
   font-weight: 700;
   color: var(--color-primary-dark);
+}
+
+.aiIdleBlock {
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aiIdleText {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.aiUsage {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.aiUsageLimitReached {
+  color: var(--color-danger);
+}
+
+.aiGenerateButton {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.aiGenerateButton:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.aiRegenerateButton {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.aiRegenerateButton:disabled {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.aiLoading {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 10px 0;
 }
 
 .submit {

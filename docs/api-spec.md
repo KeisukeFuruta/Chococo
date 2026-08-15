@@ -47,8 +47,8 @@
 | POST | `/api/auth/login` | ログイン | 不要 | S1 |
 | POST | `/api/auth/refresh` | アクセストークンの再発行 | 不要（リフレッシュトークンで認証） | 全画面共通（バックグラウンド処理） |
 | POST | `/api/auth/logout` | ログアウト（リフレッシュトークンの失効） | 不要（リフレッシュトークンで認証） | S3, S4（ヘッダー操作） |
-| GET | `/api/pairings/usage` | 本日のAI利用回数・残り回数を取得 | 必要 | S3 |
-| POST | `/api/pairings` | AIペアリング提案を取得 | 必要 | S3 |
+| GET | `/api/pairings/usage` | 本日のAI利用回数・残り回数を取得 | 必要 | S3, S5 |
+| POST | `/api/pairings` | AIペアリング提案を取得 | 必要 | S3, S5 |
 | GET | `/api/records` | 記録一覧を取得（月指定） | 必要 | S4 |
 | POST | `/api/records` | 記録を新規作成 | 必要 | S5 |
 | GET | `/api/records/{id}` | 記録詳細を取得 | 必要 | S6 |
@@ -97,7 +97,7 @@
 
 ### 3.3 GET /api/pairings/usage（AI利用回数の確認）
 
-提案ボタン押下前に残り回数をUIに表示するためのエンドポイント。JSTの0時を起点に当日分の `pairing_suggestions` 件数を集計する（[database-design.md](./database-design.md) 3章 決定事項No.3）。
+提案ボタン押下前に残り回数をUIに表示するためのエンドポイント。JSTの0時を起点に当日分の `pairing_suggestions` 件数を集計する（[database-design.md](./database-design.md) 3章 決定事項No.3）。S3（ペアリング提案画面）だけでなく、S5（記録作成画面）の入り口②でAI提案エリアを表示する際にも同様に呼び出す（[functional-spec.md](./functional-spec.md) 3.2節）。
 
 **レスポンス 200**
 ```json
@@ -119,7 +119,7 @@
 ```
 バリデーション：`sweetName` は1〜100文字。
 
-**処理概要**：利用回数を確認 → 上限内なら外部AI APIを呼び出し → `coffee_beans` から最適な豆を選ばせ、理由とともに `pairing_suggestions` に保存 → 結果を返す。
+**処理概要**：利用回数を確認 → 上限内なら外部AI APIを呼び出し → `coffee_beans` から最適な豆を選ばせ、理由とともに `pairing_suggestions` に保存 → 結果を返す。S3・S5のどちらから呼ばれても処理内容・利用上限のカウントは共通（[functional-spec.md](./functional-spec.md) 3.2節・3.3節）。
 
 **レスポンス 201**
 ```json
