@@ -1,0 +1,26 @@
+.shell {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .shell {
+    min-height: 90vh;
+    margin: 2.5vh 0;
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(74, 50, 34, 0.15);
+    overflow: hidden;
+  }
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
