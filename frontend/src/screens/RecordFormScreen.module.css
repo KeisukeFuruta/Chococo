@@ -1,0 +1,184 @@
+.container {
+  flex: 1;
+  padding: 18px 18px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.photoBox {
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
+  position: relative;
+  background: var(--color-bg);
+}
+
+.photoPreview {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.photoLabel {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 10px 16px;
+}
+
+.photoChangeLabel {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(59, 42, 32, 0.75);
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.photoRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(59, 42, 32, 0.75);
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.input,
+.textarea {
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.fieldError {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+}
+
+.aiBlock {
+  background: var(--color-accent-soft);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aiBlockTitle {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.aiBeanName {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.aiIdleBlock {
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aiIdleText {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.aiUsage {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.aiUsageLimitReached {
+  color: var(--color-danger);
+}
+
+.aiGenerateButton {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.aiGenerateButton:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.aiRegenerateButton {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.aiRegenerateButton:disabled {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.aiLoading {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 10px 0;
+}
+
+.submit {
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}

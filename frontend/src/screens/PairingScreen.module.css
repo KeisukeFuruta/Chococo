@@ -1,0 +1,100 @@
+.container {
+  flex: 1;
+  padding: 20px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.question {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.usage {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.limitReached {
+  color: var(--color-danger);
+}
+
+.submit {
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.submit:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+.resultCard {
+  background: var(--color-accent-soft);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.beanName {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-primary-dark);
+}
+
+.reason {
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.saveButton {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary-dark);
+  color: #fff;
+  font-weight: 700;
+}
+
+.loading {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 20px 0;
+}
+
+.fieldError {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+}
