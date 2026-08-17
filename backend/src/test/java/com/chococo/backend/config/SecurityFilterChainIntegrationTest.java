@@ -29,10 +29,11 @@ class SecurityFilterChainIntegrationTest {
     }
 
     @Test
-    void authRoute_isPermitAll_soAMissingControllerSurfacesAs404NotAs401() throws Exception {
-        // AuthControllerは#8で実装予定のため今は存在しないが、/api/auth/**がpermitAllであることは
-        // 「401ではなく404になる」ことで検証できる（もしpermitAllが外れれば401に変わり、このテストが落ちる）
-        mockMvc.perform(post("/api/auth/signup"))
+    void authRoute_isPermitAll_soAnUnmappedSubPathSurfacesAs404NotAs401() throws Exception {
+        // /api/auth/**の実エンドポイントはAuthController（#8）で実装済みだが、その配下の
+        // マッピングされていないパスを叩くことで「401ではなく404になる」＝permitAllであることを検証できる
+        // （もしpermitAllが外れれば認証必須になり401に変わり、このテストが落ちる）
+        mockMvc.perform(post("/api/auth/no-such-endpoint"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
     }
