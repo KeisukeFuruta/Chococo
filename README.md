@@ -36,7 +36,7 @@ Chococoは「食べたいスイーツを起点に、AIが理由つきでペア�
 | レイヤー | 技術 |
 |---|---|
 | フロントエンド | React 19 + TypeScript + Vite、CSS Modules、fetch API |
-| バックエンド | Java 21 + Spring Boot 3.5系、Spring Security（JWT認証）、Spring Data JPA |
+| バックエンド | Java 21 + Spring Boot 4.1系、Spring Security（JWT認証）、Spring Data JPA |
 | データベース | MySQL 8.0（ローカルはDocker、本番はAWS RDS） |
 | AI連携 | Anthropic Claude API（`claude-haiku-4-5`。Spring `RestClient`で直接HTTP呼び出し） |
 | インフラ | AWS EC2（t3.micro）+ RDS（無料枠内での運用が前提） |
@@ -55,10 +55,10 @@ Chococoは「食べたいスイーツを起点に、AIが理由つきでペア�
 8. ~~技術スタックを確定する~~ → [技術スタック](docs/tech-stack.md)として完了
 9. バックエンド・フロントエンドのプロジェクトセットアップ
    - `frontend/`：React 19 + TypeScript (Vite) でセットアップ済み。モックデータによる画面遷移確認用プロトタイプ（S1〜S7）を実装済み（API通信・認証は未実装）
-   - `backend/`：未着手
+   - `backend/`：プロジェクト基盤（Gradle/Spring Boot雛形、DBマイグレーション、5エンティティ、共通例外処理、Spring Security骨格）をセットアップ済み。認証・ペアリング提案・記録CRUDの実装はこれから
 10. 実装（認証 → ペアリング提案 → 記録保存 → 記録一覧 → 記録編集・削除の順を想定）
 
-現時点では設計ドキュメント9本と、フロントエンドのモックプロトタイプが完了した段階です。`backend/`の実装、およびフロントエンドとバックエンドの実通信はこれからです。ローカルDB用の`docker-compose.yml`のみ用意済みです。
+現時点では設計ドキュメント9本、フロントエンドのモックプロトタイプ、`backend/`のプロジェクト基盤が完了した段階です。認証・ペアリング提案・記録CRUDの実装、およびフロントエンドとバックエンドの実通信はこれからです。
 
 ### フロントエンドプロトタイプの起動方法
 
