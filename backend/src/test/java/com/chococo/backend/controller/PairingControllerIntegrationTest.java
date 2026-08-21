@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.chococo.backend.client.AnthropicClient;
+import com.chococo.backend.dto.pairing.PairingQuestionsRequest;
 import com.chococo.backend.dto.pairing.PairingSuggestionRequest;
 import com.chococo.backend.entity.CoffeeBean;
 import com.chococo.backend.entity.PairingSuggestion;
@@ -20,6 +21,7 @@ import com.chococo.backend.repository.CoffeeBeanRepository;
 import com.chococo.backend.repository.PairingSuggestionRepository;
 import com.chococo.backend.repository.UserRepository;
 import com.chococo.backend.security.JwtService;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -66,8 +68,8 @@ class PairingControllerIntegrationTest {
         mockMvc.perform(get("/api/pairings/usage").header("Authorization", bearerToken(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usedCount").value(0))
-                .andExpect(jsonPath("$.limit").value(10))
-                .andExpect(jsonPath("$.remainingCount").value(10))
+                .andExpect(jsonPath("$.limit").value(5))
+                .andExpect(jsonPath("$.remainingCount").value(5))
                 .andExpect(jsonPath("$.resetAt", endsWith("+09:00")));
     }
 
@@ -89,7 +91,7 @@ class PairingControllerIntegrationTest {
                 .andExpect(jsonPath("$.sweetName").value("ショートケーキ"))
                 .andExpect(jsonPath("$.coffeeBean.id").value(bean.getId()))
                 .andExpect(jsonPath("$.reason").value("よく合います"))
-                .andExpect(jsonPath("$.remainingCount").value(9));
+                .andExpect(jsonPath("$.remainingCount").value(4));
 
         assertThat(pairingSuggestionRepository.count()).isEqualTo(1);
     }
@@ -109,7 +111,7 @@ class PairingControllerIntegrationTest {
     void suggest_whenDailyLimitAlreadyReached_returns429_withoutCallingAi() throws Exception {
         User user = createUser("limit@example.com");
         CoffeeBean bean = coffeeBeanRepository.findAll().get(0);
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             pairingSuggestionRepository.save(PairingSuggestion.builder()
                     .userId(user.getId())
                     .sweetName("既存の提案")
@@ -138,11 +140,55 @@ class PairingControllerIntegrationTest {
                 .andExpect(jsonPath("$.usedCount").value(0));
     }
 
+    @Test
+    void questions_withValidAiResponse_returnsQuestions_andDoesNotCountTowardTheDailyLimit() throws Exception {
+        User user = createUser("questions@example.com");
+        when(anthropicClient.complete(anyString())).thenReturn(
+                "{\"questions\": [{\"question\": \"どんな味わいが好みですか？\", \"options\": [\"甘さ控えめ\", \"しっかり甘い\"]}]}");
+
+        mockMvc.perform(questionsRequest(user, "ショートケーキ"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions[0].question").value("どんな味わいが好みですか？"))
+                .andExpect(jsonPath("$.questions[0].options[0]").value("甘さ控えめ"));
+
+        mockMvc.perform(get("/api/pairings/usage").header("Authorization", bearerToken(user)))
+                .andExpect(jsonPath("$.usedCount").value(0))
+                .andExpect(jsonPath("$.remainingCount").value(5));
+        assertThat(pairingSuggestionRepository.count()).isZero();
+    }
+
+    @Test
+    void questions_whenDailyLimitAlreadyReached_returns429_withoutCallingAi() throws Exception {
+        User user = createUser("questions-limit@example.com");
+        CoffeeBean bean = coffeeBeanRepository.findAll().get(0);
+        for (int i = 0; i < 5; i++) {
+            pairingSuggestionRepository.save(PairingSuggestion.builder()
+                    .userId(user.getId())
+                    .sweetName("既存の提案")
+                    .coffeeBean(bean)
+                    .reason("理由")
+                    .build());
+        }
+
+        mockMvc.perform(questionsRequest(user, "プリン"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("RATE_LIMIT_EXCEEDED"));
+
+        verifyNoInteractions(anthropicClient);
+    }
+
     private MockHttpServletRequestBuilder suggestRequest(User user, String sweetName) throws Exception {
         return post("/api/pairings")
                 .header("Authorization", bearerToken(user))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new PairingSuggestionRequest(sweetName)));
+                .content(objectMapper.writeValueAsString(new PairingSuggestionRequest(sweetName, List.of())));
+    }
+
+    private MockHttpServletRequestBuilder questionsRequest(User user, String sweetName) throws Exception {
+        return post("/api/pairings/questions")
+                .header("Authorization", bearerToken(user))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new PairingQuestionsRequest(sweetName)));
     }
 
     private String bearerToken(User user) {
