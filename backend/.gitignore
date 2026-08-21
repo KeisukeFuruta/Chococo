@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# 写真アップロード保存先（chococo.storage.upload-dir。aws-infra-design.md 3.4節）
+/uploads/

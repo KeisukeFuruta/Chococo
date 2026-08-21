@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 // api-spec.md 1.2節のステータスコード・エラーコード対応表を1件ずつ固定する。
@@ -65,6 +66,15 @@ class GlobalExceptionHandlerTest {
     void constraintViolation_mapsTo400VALIDATION_ERROR() {
         ResponseEntity<ErrorResponse> response =
                 handler.handleValidationException(new ConstraintViolationException(Set.of()));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().error().code()).isEqualTo("VALIDATION_ERROR");
+    }
+
+    @Test
+    void missingServletRequestParameter_mapsTo400VALIDATION_ERROR() {
+        // GET /api/records?year=&month= のyear/month省略時など、必須クエリパラメータ欠如で500に落ちないことを保証する
+        ResponseEntity<ErrorResponse> response =
+                handler.handleValidationException(new MissingServletRequestParameterException("year", "int"));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().error().code()).isEqualTo("VALIDATION_ERROR");
     }
