@@ -34,6 +34,17 @@ public class PhotoStorageService {
         return "/uploads/" + filename;
     }
 
+    // functional-spec.md 3.5節：呼び出し元（RecordPhotoCleanupListener）でAFTER_COMMIT後に呼ばれる想定。
+    // 失敗してもDB側の削除・更新は既にコミット済みで巻き戻せないため、ここでは例外を投げるだけに留める
+    public void delete(String photoPath) {
+        String filename = Path.of(photoPath).getFileName().toString();
+        try {
+            Files.deleteIfExists(uploadDir.resolve(filename));
+        } catch (IOException e) {
+            throw new UncheckedIOException("写真の削除に失敗しました", e);
+        }
+    }
+
     private String resolveExtension(String contentType) {
         if (MediaType.IMAGE_JPEG_VALUE.equals(contentType)) {
             return ".jpg";

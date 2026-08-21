@@ -12,8 +12,10 @@ import com.chococo.backend.entity.CoffeeBean;
 import com.chococo.backend.entity.PairingSuggestion;
 import com.chococo.backend.entity.Record;
 import com.chococo.backend.entity.RoastLevel;
+import com.chococo.backend.event.PhotoDeletionRequestedEvent;
 import com.chococo.backend.exception.PairingSuggestionAlreadyUsedException;
 import com.chococo.backend.exception.PairingSuggestionNotFoundException;
+import com.chococo.backend.exception.RecordNotFoundException;
 import com.chococo.backend.repository.PairingSuggestionRepository;
 import com.chococo.backend.repository.RecordRepository;
 import java.time.Instant;
@@ -22,18 +24,21 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-// PhotoStorageServiceをMockitoでスタブし、実際のディスク書き込みなしでRecordServiceの業務ロジック
-// （ペアリング提案のスナップショットコピー・使用済みチェック・所有者チェック）だけを高速に検証する
+// PhotoStorageService・ApplicationEventPublisherをMockitoでスタブし、実際のディスク書き込みや
+// トランザクションコミットなしでRecordServiceの業務ロジック（スナップショットコピー・所有者チェック・
+// 写真削除イベントの発行タイミング）だけを高速に検証する
 class RecordServiceTest {
 
     private final RecordRepository recordRepository = mock(RecordRepository.class);
     private final PairingSuggestionRepository pairingSuggestionRepository = mock(PairingSuggestionRepository.class);
     private final PhotoStorageService photoStorageService = mock(PhotoStorageService.class);
-    private final RecordService recordService =
-            new RecordService(recordRepository, pairingSuggestionRepository, photoStorageService);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final RecordService recordService = new RecordService(
+            recordRepository, pairingSuggestionRepository, photoStorageService, eventPublisher);
 
     @Test
     void create_withoutPairingSuggestion_savesRecordWithoutSnapshot() {
@@ -143,6 +148,135 @@ class RecordServiceTest {
         assertThat(response.records()).hasSize(1);
         assertThat(response.records().get(0).id()).isEqualTo(101L);
         assertThat(response.records().get(0).photoUrl()).isEqualTo("/uploads/abc.jpg");
+    }
+
+    @Test
+    void getById_withOwnRecord_returnsIt() {
+        Record record = ownedRecord(101L, 1L, "/uploads/abc.jpg");
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+
+        var response = recordService.getById(1L, 101L);
+
+        assertThat(response.id()).isEqualTo(101L);
+        assertThat(response.photoUrl()).isEqualTo("/uploads/abc.jpg");
+    }
+
+    @Test
+    void getById_withRecordOwnedByAnotherUserOrMissing_throwsNotFound() {
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> recordService.getById(1L, 101L)).isInstanceOf(RecordNotFoundException.class);
+    }
+
+    @Test
+    void update_withoutPhotoChange_updatesFieldsAndKeepsExistingPhoto_withoutPublishingDeletion() {
+        Record record = ownedRecord(101L, 1L, "/uploads/abc.jpg");
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+        stubSaveReturningArgument();
+
+        var response = recordService.update(1L, 101L, "新しい名前", LocalDate.of(2026, 8, 10), "更新後の感想", false, null);
+
+        assertThat(response.sweetName()).isEqualTo("新しい名前");
+        assertThat(response.recordDate()).isEqualTo(LocalDate.of(2026, 8, 10));
+        assertThat(response.comment()).isEqualTo("更新後の感想");
+        assertThat(response.photoUrl()).isEqualTo("/uploads/abc.jpg");
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void update_withDeletePhotoTrue_clearsPhotoAndPublishesDeletionForThePreviousFile() {
+        Record record = ownedRecord(101L, 1L, "/uploads/old.jpg");
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+        stubSaveReturningArgument();
+
+        var response = recordService.update(1L, 101L, "名前", LocalDate.of(2026, 8, 10), null, true, null);
+
+        assertThat(response.photoUrl()).isNull();
+        verify(eventPublisher).publishEvent(new PhotoDeletionRequestedEvent("/uploads/old.jpg"));
+        verify(photoStorageService, never()).store(any());
+    }
+
+    @Test
+    void update_withDeletePhotoTrueAndPhotoPartBothPresent_deletePhotoTakesPrecedence() {
+        Record record = ownedRecord(101L, 1L, "/uploads/old.jpg");
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+        stubSaveReturningArgument();
+        MultipartFile newPhoto = new MockMultipartFile("photo", "new.jpg", "image/jpeg", new byte[] {1});
+
+        var response = recordService.update(1L, 101L, "名前", LocalDate.of(2026, 8, 10), null, true, newPhoto);
+
+        assertThat(response.photoUrl()).isNull();
+        verify(photoStorageService, never()).store(any());
+    }
+
+    @Test
+    void update_withNewPhoto_replacesPhotoAndPublishesDeletionForThePreviousFile() {
+        Record record = ownedRecord(101L, 1L, "/uploads/old.jpg");
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+        MultipartFile newPhoto = new MockMultipartFile("photo", "new.jpg", "image/jpeg", new byte[] {1});
+        when(photoStorageService.store(newPhoto)).thenReturn("/uploads/new.jpg");
+        stubSaveReturningArgument();
+
+        var response = recordService.update(1L, 101L, "名前", LocalDate.of(2026, 8, 10), null, false, newPhoto);
+
+        assertThat(response.photoUrl()).isEqualTo("/uploads/new.jpg");
+        verify(eventPublisher).publishEvent(new PhotoDeletionRequestedEvent("/uploads/old.jpg"));
+    }
+
+    @Test
+    void update_withRecordOwnedByAnotherUserOrMissing_throwsNotFound_andDoesNotSave() {
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                        recordService.update(1L, 101L, "名前", LocalDate.of(2026, 8, 10), null, false, null))
+                .isInstanceOf(RecordNotFoundException.class);
+
+        verify(recordRepository, never()).save(any());
+    }
+
+    @Test
+    void delete_withPhoto_deletesRecordAndPublishesDeletionForThePhoto() {
+        Record record = ownedRecord(101L, 1L, "/uploads/abc.jpg");
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+
+        recordService.delete(1L, 101L);
+
+        verify(recordRepository).delete(record);
+        verify(eventPublisher).publishEvent(new PhotoDeletionRequestedEvent("/uploads/abc.jpg"));
+    }
+
+    @Test
+    void delete_withoutPhoto_deletesRecord_withoutPublishingAnyEvent() {
+        Record record = ownedRecord(101L, 1L, null);
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.of(record));
+
+        recordService.delete(1L, 101L);
+
+        verify(recordRepository).delete(record);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void delete_withRecordOwnedByAnotherUserOrMissing_throwsNotFound_andDoesNotDelete() {
+        when(recordRepository.findByIdAndUserId(101L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> recordService.delete(1L, 101L)).isInstanceOf(RecordNotFoundException.class);
+
+        verify(recordRepository, never()).delete(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    private Record ownedRecord(Long id, Long userId, String photoPath) {
+        Instant now = Instant.now();
+        return Record.builder()
+                .id(id)
+                .userId(userId)
+                .sweetName("元の名前")
+                .recordDate(LocalDate.of(2026, 8, 1))
+                .photoPath(photoPath)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
     }
 
     // @CreationTimestamp/@UpdateTimestampはHibernateの実永続化時のみ働くため、モックのsave()では
