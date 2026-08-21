@@ -1,9 +1,9 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { ApiError } from "../api/client";
-import { suggestPairing } from "../api/pairings";
+import { generatePairingQuestions, suggestPairing } from "../api/pairings";
 import { createRecord, getRecord, updateRecord } from "../api/records";
 import { BackHeader } from "../components/BackHeader";
-import type { PairingSuggestion, RecordDetail } from "../types";
+import type { PairingQuestion, PairingSuggestion, RecordDetail } from "../types";
 import { todayDateKey } from "../utils/date";
 import styles from "./RecordFormScreen.module.css";
 
@@ -43,8 +43,11 @@ export function RecordFormScreen({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [suggestion, setSuggestion] = useState<PairingSuggestion | undefined>(initialSuggestion);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<PairingQuestion[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
   const [aiInfo, setAiInfo] = useState<{ coffeeBeanName: string; aiReason: string } | null>(null);
 
   const [loadingRecord, setLoadingRecord] = useState(mode === "edit");
@@ -52,6 +55,7 @@ export function RecordFormScreen({
 
   const canGenerateSuggestion = mode === "create";
   const limitReached = usageRemaining === null || usageRemaining === undefined || usageRemaining <= 0;
+  const allAnswered = questions.length > 0 && answers.every((answer) => answer !== "");
 
   useEffect(() => {
     if (mode !== "edit" || recordId === undefined) return;
@@ -101,15 +105,42 @@ export function RecordFormScreen({
     if (existingPhotoUrl) setRemovePhoto(true);
   }
 
-  async function handleGenerateSuggestion() {
+  function handleSweetNameChange(value: string) {
+    setSweetName(value);
+    if (questions.length > 0) {
+      setQuestions([]);
+      setAnswers([]);
+    }
+  }
+
+  async function handleStartQuestions() {
     if (!sweetName.trim()) {
       setSuggestionError("スイーツ名を入力してから提案を取得してください");
       return;
     }
     setSuggestionError(null);
+    setQuestionsLoading(true);
+    try {
+      const result = await generatePairingQuestions(sweetName.trim());
+      setQuestions(result);
+      setAnswers(result.map(() => ""));
+    } catch (err) {
+      setSuggestionError(err instanceof ApiError ? err.message : "質問の取得に失敗しました");
+    } finally {
+      setQuestionsLoading(false);
+    }
+  }
+
+  async function handleSubmitAnswers() {
+    setSuggestionError(null);
     setSuggestionLoading(true);
     try {
-      const result = await suggestPairing(sweetName.trim());
+      const result = await suggestPairing(
+        sweetName.trim(),
+        questions.map((q, i) => ({ question: q.question, answer: answers[i] })),
+      );
+      setQuestions([]);
+      setAnswers([]);
       setSuggestion(result);
       onSuggestionGenerated?.(result);
     } catch (err) {
@@ -211,7 +242,7 @@ export function RecordFormScreen({
             id="record-sweets-name"
             className={styles.input}
             value={sweetName}
-            onChange={(e) => setSweetName(e.target.value)}
+            onChange={(e) => handleSweetNameChange(e.target.value)}
           />
           {errors.sweetName && <span className={styles.fieldError}>{errors.sweetName}</span>}
         </div>
@@ -244,7 +275,39 @@ export function RecordFormScreen({
         </div>
 
         {canGenerateSuggestion ? (
-          suggestion ? (
+          questions.length > 0 ? (
+            <div className={styles.aiBlock}>
+              <span className={styles.aiBlockTitle}>☕ 追加で教えてください</span>
+              {questions.map((q, qIndex) => (
+                <div key={q.question} className={styles.questionBlock}>
+                  <span className={styles.questionText}>{q.question}</span>
+                  <div className={styles.optionsRow}>
+                    {q.options.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className={`${styles.optionButton} ${answers[qIndex] === option ? styles.optionButtonSelected : ""}`}
+                        onClick={() =>
+                          setAnswers((prev) => prev.map((a, i) => (i === qIndex ? option : a)))
+                        }
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {suggestionError && <span className={styles.fieldError}>{suggestionError}</span>}
+              <button
+                type="button"
+                className={styles.aiGenerateButton}
+                onClick={handleSubmitAnswers}
+                disabled={!allAnswered || suggestionLoading}
+              >
+                {suggestionLoading ? "提案を考えています…" : "提案してもらう"}
+              </button>
+            </div>
+          ) : suggestion ? (
             <div className={styles.aiBlock}>
               <span className={styles.aiBlockTitle}>☕ AI提案</span>
               <span className={styles.aiBeanName}>
@@ -254,8 +317,8 @@ export function RecordFormScreen({
               <button
                 type="button"
                 className={styles.aiRegenerateButton}
-                onClick={handleGenerateSuggestion}
-                disabled={suggestionLoading || limitReached}
+                onClick={handleStartQuestions}
+                disabled={questionsLoading || limitReached}
               >
                 提案を取り直す
               </button>
@@ -263,8 +326,8 @@ export function RecordFormScreen({
           ) : (
             <div className={styles.aiIdleBlock}>
               <span className={styles.aiBlockTitle}>☕ AI提案</span>
-              {suggestionLoading ? (
-                <div className={styles.aiLoading}>提案を考えています…</div>
+              {questionsLoading ? (
+                <div className={styles.aiLoading}>質問を考えています…</div>
               ) : (
                 <>
                   <span className={styles.aiIdleText}>まだ提案がありません</span>
@@ -281,7 +344,7 @@ export function RecordFormScreen({
                   <button
                     type="button"
                     className={styles.aiGenerateButton}
-                    onClick={handleGenerateSuggestion}
+                    onClick={handleStartQuestions}
                     disabled={limitReached}
                   >
                     AIに提案してもらう
