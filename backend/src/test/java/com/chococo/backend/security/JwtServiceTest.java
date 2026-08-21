@@ -31,7 +31,16 @@ class JwtServiceTest {
     @Test
     void tamperedTokenFailsToParse() {
         String token = jwtService.generateAccessToken(1L, "user@example.com");
-        String tampered = token.substring(0, token.length() - 1) + (token.endsWith("a") ? "b" : "a");
+        // header.payload.signature の各セグメントは独立にbase64url化されており、各セグメント末尾の文字は
+        // 端数ビット（don't-careビット）を含むことがあるため、そこだけを変えるとデコード結果のバイト列が
+        // 変わらず署名が偶然一致してしまう場合がある。payloadセグメントの先頭寄り（末尾ではない）1文字を
+        // 変えることで、確実にデコード結果のバイト列を変える
+        String[] segments = token.split("\\.");
+        String payload = segments[1];
+        char originalChar = payload.charAt(1);
+        char replacementChar = originalChar == 'a' ? 'b' : 'a';
+        String tamperedPayload = payload.charAt(0) + String.valueOf(replacementChar) + payload.substring(2);
+        String tampered = segments[0] + "." + tamperedPayload + "." + segments[2];
 
         assertThat(jwtService.parseAccessToken(tampered)).isEmpty();
     }
