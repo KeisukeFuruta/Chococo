@@ -148,9 +148,12 @@ class AuthControllerIntegrationTest {
     void accessTokenIssuedBySignup_authenticatesProtectedEndpoints() throws Exception {
         AuthResponse signedUp = signup("protected@example.com", "password123");
 
-        // RecordControllerは未実装のため404になるが、401にならないこと自体がJWT認証成功の証跡
-        mockMvc.perform(get("/api/records").header("Authorization", "Bearer " + signedUp.token()))
-                .andExpect(status().isNotFound());
+        // signup直後のトークンで他のドメイン（RecordController）の保護エンドポイントを叩けることを確認する
+        mockMvc.perform(get("/api/records")
+                        .header("Authorization", "Bearer " + signedUp.token())
+                        .param("year", "2026")
+                        .param("month", "8"))
+                .andExpect(status().isOk());
     }
 
     private AuthResponse signup(String email, String password) throws Exception {
