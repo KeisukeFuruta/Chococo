@@ -1,73 +1,77 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { logout as apiLogout } from "./api/auth";
+import { AUTH_EXPIRED_EVENT } from "./api/client";
+import { getPairingUsage } from "./api/pairings";
+import { tokenStorage } from "./api/tokenStorage";
 import styles from "./App.module.css";
 import { AppHeader } from "./components/AppHeader";
 import { TabBar } from "./components/TabBar";
-import { INITIAL_RECORDS } from "./mockData";
 import { LoginScreen } from "./screens/LoginScreen";
 import { PairingScreen } from "./screens/PairingScreen";
 import { RecordDetailScreen } from "./screens/RecordDetailScreen";
-import { RecordFormScreen, type RecordFormValues } from "./screens/RecordFormScreen";
+import { RecordFormScreen } from "./screens/RecordFormScreen";
 import { RecordsCalendarScreen } from "./screens/RecordsCalendarScreen";
 import { SignupScreen } from "./screens/SignupScreen";
-import type { AppScreen, PairingSuggestionResult, SweetsRecord } from "./types";
-import { todayDateKey } from "./utils/date";
+import type { AppScreen, PairingSuggestion } from "./types";
 
-const DAILY_LIMIT = 10;
+const DEFAULT_USAGE_LIMIT = 10;
 
 export default function App() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [screen, setScreen] = useState<AppScreen>({ kind: "login" });
-  const [records, setRecords] = useState<SweetsRecord[]>(INITIAL_RECORDS);
-  const [usageRemaining, setUsageRemaining] = useState(DAILY_LIMIT);
-  const [lastSuggestion, setLastSuggestion] = useState<PairingSuggestionResult | null>(null);
+  const [authenticated, setAuthenticated] = useState(() => tokenStorage.getRefreshToken() !== null);
+  const [screen, setScreen] = useState<AppScreen>(() =>
+    tokenStorage.getRefreshToken() ? { kind: "main", tab: "pairing" } : { kind: "login" },
+  );
+  const [usageRemaining, setUsageRemaining] = useState<number | null>(null);
+  const [usageLimit, setUsageLimit] = useState(DEFAULT_USAGE_LIMIT);
+  const [lastSuggestion, setLastSuggestion] = useState<PairingSuggestion | null>(null);
+
+  useEffect(() => {
+    function handleAuthExpired() {
+      setAuthenticated(false);
+      setLastSuggestion(null);
+      setScreen({ kind: "login" });
+    }
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, []);
+
+  // api-spec.md 3.3節：S3（ペアリング提案画面）とS5の入り口②（記録作成のAI提案エリア）表示時に利用状況を取得する
+  useEffect(() => {
+    if (!authenticated) return;
+    const needsUsage = (screen.kind === "main" && screen.tab === "pairing") || screen.kind === "recordCreate";
+    if (!needsUsage) return;
+
+    let cancelled = false;
+    getPairingUsage()
+      .then((usage) => {
+        if (cancelled) return;
+        setUsageRemaining(usage.remainingCount);
+        setUsageLimit(usage.limit);
+      })
+      .catch(() => {
+        // 取得失敗時は「確認中」表示のまま。AI提案リクエスト自体のエラーは各画面側で表示する
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticated, screen]);
 
   function handleAuthenticated() {
     setAuthenticated(true);
     setScreen({ kind: "main", tab: "pairing" });
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    await apiLogout();
     setAuthenticated(false);
     setLastSuggestion(null);
+    setUsageRemaining(null);
     setScreen({ kind: "login" });
   }
 
-  function handleUsageConsumed() {
-    setUsageRemaining((remaining) => Math.max(0, remaining - 1));
-  }
-
-  function handleSuggestionGenerated(suggestion: PairingSuggestionResult) {
+  function handleSuggestionGenerated(suggestion: PairingSuggestion) {
     setLastSuggestion(suggestion);
-    handleUsageConsumed();
-  }
-
-  function handleCreateRecord(values: RecordFormValues, suggestion?: PairingSuggestionResult) {
-    const newRecord: SweetsRecord = {
-      id: `r${Date.now()}`,
-      sweetsName: values.sweetsName,
-      date: values.date,
-      memo: values.memo || undefined,
-      photoDataUrl: values.photoDataUrl,
-      pairing: suggestion,
-    };
-    setRecords((prev) => [...prev, newRecord]);
-    setScreen({ kind: "recordDetail", recordId: newRecord.id });
-  }
-
-  function handleUpdateRecord(recordId: string, values: RecordFormValues) {
-    setRecords((prev) =>
-      prev.map((r) =>
-        r.id === recordId
-          ? { ...r, sweetsName: values.sweetsName, date: values.date, memo: values.memo || undefined, photoDataUrl: values.photoDataUrl }
-          : r,
-      ),
-    );
-    setScreen({ kind: "recordDetail", recordId });
-  }
-
-  function handleDeleteRecord(recordId: string) {
-    setRecords((prev) => prev.filter((r) => r.id !== recordId));
-    setScreen({ kind: "main", tab: "records" });
+    setUsageRemaining(suggestion.remainingCount);
   }
 
   return (
@@ -105,6 +109,7 @@ export default function App() {
             {screen.tab === "pairing" ? (
               <PairingScreen
                 usageRemaining={usageRemaining}
+                usageLimit={usageLimit}
                 suggestion={lastSuggestion}
                 onSuggestionGenerated={handleSuggestionGenerated}
                 onSaveAsRecord={(suggestion) =>
@@ -113,7 +118,6 @@ export default function App() {
               />
             ) : (
               <RecordsCalendarScreen
-                records={records}
                 onSelectRecord={(recordId) => setScreen({ kind: "recordDetail", recordId })}
                 onCreateForDate={(dateKey) =>
                   setScreen({ kind: "recordCreate", origin: "records", presetDate: dateKey })
@@ -127,57 +131,36 @@ export default function App() {
       case "recordCreate":
         return (
           <RecordFormScreen
-            title="記録を作成"
-            initialValues={{
-              sweetsName: screen.suggestion?.sweetsName ?? "",
-              date: screen.presetDate ?? todayDateKey(),
-              memo: "",
-            }}
+            mode="create"
+            presetDate={screen.presetDate}
             initialSuggestion={screen.suggestion}
             usageRemaining={usageRemaining}
-            onGenerateSuggestion={handleUsageConsumed}
+            usageLimit={usageLimit}
+            onSuggestionGenerated={handleSuggestionGenerated}
             onBack={() => setScreen({ kind: "main", tab: screen.origin })}
-            onSubmit={(values, suggestion) => handleCreateRecord(values, suggestion)}
+            onSaved={(record) => setScreen({ kind: "recordDetail", recordId: record.id })}
           />
         );
 
-      case "recordDetail": {
-        const record = records.find((r) => r.id === screen.recordId);
-        if (!record) {
-          setScreen({ kind: "main", tab: "records" });
-          return null;
-        }
+      case "recordDetail":
         return (
           <RecordDetailScreen
-            record={record}
+            recordId={screen.recordId}
             onBack={() => setScreen({ kind: "main", tab: "records" })}
-            onEdit={() => setScreen({ kind: "recordEdit", recordId: record.id })}
-            onDelete={() => handleDeleteRecord(record.id)}
+            onEdit={() => setScreen({ kind: "recordEdit", recordId: screen.recordId })}
+            onDeleted={() => setScreen({ kind: "main", tab: "records" })}
           />
         );
-      }
 
-      case "recordEdit": {
-        const record = records.find((r) => r.id === screen.recordId);
-        if (!record) {
-          setScreen({ kind: "main", tab: "records" });
-          return null;
-        }
+      case "recordEdit":
         return (
           <RecordFormScreen
-            title="記録を編集"
-            initialValues={{
-              sweetsName: record.sweetsName,
-              date: record.date,
-              memo: record.memo ?? "",
-              photoDataUrl: record.photoDataUrl,
-            }}
-            initialSuggestion={record.pairing}
-            onBack={() => setScreen({ kind: "recordDetail", recordId: record.id })}
-            onSubmit={(values) => handleUpdateRecord(record.id, values)}
+            mode="edit"
+            recordId={screen.recordId}
+            onBack={() => setScreen({ kind: "recordDetail", recordId: screen.recordId })}
+            onSaved={(record) => setScreen({ kind: "recordDetail", recordId: record.id })}
           />
         );
-      }
 
       default:
         return null;

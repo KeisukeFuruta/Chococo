@@ -1,47 +1,50 @@
 import { useState } from "react";
-import type { PairingSuggestionResult } from "../types";
-import { generateMockSuggestion } from "../utils/mockAi";
+import { ApiError } from "../api/client";
+import { suggestPairing } from "../api/pairings";
+import type { PairingSuggestion } from "../types";
 import styles from "./PairingScreen.module.css";
 
-const DAILY_LIMIT = 10;
-
 interface PairingScreenProps {
-  usageRemaining: number;
-  suggestion: PairingSuggestionResult | null;
-  onSuggestionGenerated: (suggestion: PairingSuggestionResult) => void;
-  onSaveAsRecord: (suggestion: PairingSuggestionResult) => void;
+  usageRemaining: number | null;
+  usageLimit: number;
+  suggestion: PairingSuggestion | null;
+  onSuggestionGenerated: (suggestion: PairingSuggestion) => void;
+  onSaveAsRecord: (suggestion: PairingSuggestion) => void;
 }
 
 export function PairingScreen({
   usageRemaining,
+  usageLimit,
   suggestion,
   onSuggestionGenerated,
   onSaveAsRecord,
 }: PairingScreenProps) {
-  const [sweetsName, setSweetsName] = useState("");
+  const [sweetName, setSweetName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const limitReached = usageRemaining <= 0;
+  const limitReached = usageRemaining === null || usageRemaining <= 0;
 
-  function handleSubmit() {
-    if (!sweetsName.trim()) {
+  async function handleSubmit() {
+    if (!sweetName.trim()) {
       setError("スイーツ名を入力してください");
       return;
     }
-    if (sweetsName.length > 100) {
+    if (sweetName.length > 100) {
       setError("スイーツ名は100文字以内で入力してください");
       return;
     }
     setError(null);
     setLoading(true);
 
-    // 実際のAI API呼び出しはバックエンド未着手のため未実装。
-    // ローディング→結果表示の画面遷移確認用に疑似的な遅延を入れる。
-    setTimeout(() => {
+    try {
+      const result = await suggestPairing(sweetName.trim());
+      onSuggestionGenerated(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "提案の取得に失敗しました");
+    } finally {
       setLoading(false);
-      onSuggestionGenerated(generateMockSuggestion(sweetsName.trim()));
-    }, 700);
+    }
   }
 
   return (
@@ -51,16 +54,18 @@ export function PairingScreen({
         <input
           className={styles.input}
           placeholder="例）ショートケーキ"
-          value={sweetsName}
-          onChange={(e) => setSweetsName(e.target.value)}
+          value={sweetName}
+          onChange={(e) => setSweetName(e.target.value)}
         />
         {error && <div className={styles.fieldError}>{error}</div>}
       </div>
 
       <div className={`${styles.usage} ${limitReached ? styles.limitReached : ""}`}>
-        {limitReached
-          ? "本日の利用上限に達しました（JST 0時にリセット）"
-          : `本日の残り利用回数: ${usageRemaining} / ${DAILY_LIMIT}`}
+        {usageRemaining === null
+          ? "利用状況を確認中…"
+          : limitReached
+            ? "本日の利用上限に達しました（JST 0時にリセット）"
+            : `本日の残り利用回数: ${usageRemaining} / ${usageLimit}`}
       </div>
 
       <button

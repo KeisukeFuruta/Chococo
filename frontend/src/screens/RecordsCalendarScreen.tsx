@@ -1,32 +1,51 @@
-import { useMemo, useState } from "react";
-import type { SweetsRecord } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import { ApiError } from "../api/client";
+import { listRecords } from "../api/records";
+import type { RecordListItem } from "../types";
 import { buildMonthGrid, formatMonthLabel, toDateKey, WEEKDAYS } from "../utils/date";
 import styles from "./RecordsCalendarScreen.module.css";
 
 interface RecordsCalendarScreenProps {
-  records: SweetsRecord[];
-  onSelectRecord: (recordId: string) => void;
+  onSelectRecord: (recordId: number) => void;
   onCreateForDate: (dateKey: string) => void;
 }
 
-export function RecordsCalendarScreen({
-  records,
-  onSelectRecord,
-  onCreateForDate,
-}: RecordsCalendarScreenProps) {
+export function RecordsCalendarScreen({ onSelectRecord, onCreateForDate }: RecordsCalendarScreenProps) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [pickerDateKey, setPickerDateKey] = useState<string | null>(null);
+  const [records, setRecords] = useState<RecordListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    listRecords(year, month)
+      .then((res) => {
+        if (!cancelled) setRecords(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(err instanceof ApiError ? err.message : "記録の取得に失敗しました");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [year, month]);
 
   const weeks = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
   const recordsByDate = useMemo(() => {
-    const map = new Map<string, SweetsRecord[]>();
+    const map = new Map<string, RecordListItem[]>();
     for (const record of records) {
-      const list = map.get(record.date) ?? [];
+      const list = map.get(record.recordDate) ?? [];
       list.push(record);
-      map.set(record.date, list);
+      map.set(record.recordDate, list);
     }
     return map;
   }, [records]);
@@ -49,7 +68,7 @@ export function RecordsCalendarScreen({
     }
   }
 
-  function handleCellClick(dateKey: string, dayRecords: SweetsRecord[]) {
+  function handleCellClick(dateKey: string, dayRecords: RecordListItem[]) {
     if (dayRecords.length === 1) {
       onSelectRecord(dayRecords[0].id);
     } else if (dayRecords.length > 1) {
@@ -83,6 +102,8 @@ export function RecordsCalendarScreen({
         ))}
       </div>
 
+      {loadError && <div className={styles.emptyMonth}>{loadError}</div>}
+
       <div className={styles.grid}>
         {weeks.flatMap((week, weekIndex) =>
           week.map((day, dayIndex) => {
@@ -104,8 +125,8 @@ export function RecordsCalendarScreen({
                 <span className={styles.dayNumber}>{day}</span>
                 {hasRecord && (
                   <div className={styles.thumb}>
-                    {dayRecords[0].photoDataUrl ? (
-                      <img src={dayRecords[0].photoDataUrl} alt={dayRecords[0].sweetsName} />
+                    {dayRecords[0].photoUrl ? (
+                      <img src={dayRecords[0].photoUrl} alt={dayRecords[0].sweetName} />
                     ) : (
                       "🖼"
                     )}
@@ -118,7 +139,9 @@ export function RecordsCalendarScreen({
         )}
       </div>
 
-      {!hasAnyRecordThisMonth && <div className={styles.emptyMonth}>この月の記録はまだありません</div>}
+      {!loading && !loadError && !hasAnyRecordThisMonth && (
+        <div className={styles.emptyMonth}>この月の記録はまだありません</div>
+      )}
 
       {pickerDateKey && (
         <div className={styles.pickerOverlay}>
@@ -134,7 +157,7 @@ export function RecordsCalendarScreen({
                   onSelectRecord(r.id);
                 }}
               >
-                {r.sweetsName}
+                {r.sweetName}
               </button>
             ))}
             <button type="button" className={styles.pickerClose} onClick={() => setPickerDateKey(null)}>
