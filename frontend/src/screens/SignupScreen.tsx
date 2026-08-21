@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { signup } from "../api/auth";
+import { ApiError } from "../api/client";
 import { BackHeader } from "../components/BackHeader";
 import styles from "./LoginScreen.module.css";
 
@@ -14,9 +16,9 @@ export function SignupScreen({ onSignup, onBack }: SignupScreenProps) {
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [simulateDuplicate, setSimulateDuplicate] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
 
@@ -33,12 +35,15 @@ export function SignupScreen({ onSignup, onBack }: SignupScreenProps) {
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    if (simulateDuplicate) {
-      setFormError("このメールアドレスは既に登録されています");
-      return;
+    setSubmitting(true);
+    try {
+      await signup(email, password);
+      onSignup();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "登録に失敗しました");
+    } finally {
+      setSubmitting(false);
     }
-
-    onSignup();
   }
 
   return (
@@ -81,19 +86,15 @@ export function SignupScreen({ onSignup, onBack }: SignupScreenProps) {
 
           {formError && <div className={styles.formError} style={{ marginTop: 14 }}>{formError}</div>}
 
-          <button type="submit" className={styles.submit} style={{ width: "100%", marginTop: 20 }}>
-            登録する
+          <button
+            type="submit"
+            className={styles.submit}
+            style={{ width: "100%", marginTop: 20 }}
+            disabled={submitting}
+          >
+            {submitting ? "登録中…" : "登録する"}
           </button>
         </form>
-
-        <label className={styles.demoToggle}>
-          <input
-            type="checkbox"
-            checked={simulateDuplicate}
-            onChange={(e) => setSimulateDuplicate(e.target.checked)}
-          />
-          プロトタイプ確認用：メール重複時の表示を試す
-        </label>
       </div>
     </div>
   );

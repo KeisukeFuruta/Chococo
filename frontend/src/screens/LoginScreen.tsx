@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { login } from "../api/auth";
+import { ApiError } from "../api/client";
 import styles from "./LoginScreen.module.css";
 
 interface LoginScreenProps {
@@ -11,9 +13,9 @@ export function LoginScreen({ onLogin, onNavigateSignup }: LoginScreenProps) {
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [simulateFailure, setSimulateFailure] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
 
@@ -23,13 +25,15 @@ export function LoginScreen({ onLogin, onNavigateSignup }: LoginScreenProps) {
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    if (simulateFailure) {
-      // functional-spec.md 3.1節：どちらが誤りかは特定させない文言
-      setFormError("メールアドレスまたはパスワードが正しくありません");
-      return;
+    setSubmitting(true);
+    try {
+      await login(email, password);
+      onLogin();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "ログインに失敗しました");
+    } finally {
+      setSubmitting(false);
     }
-
-    onLogin();
   }
 
   return (
@@ -68,8 +72,13 @@ export function LoginScreen({ onLogin, onNavigateSignup }: LoginScreenProps) {
 
         {formError && <div className={styles.formError} style={{ marginTop: 14 }}>{formError}</div>}
 
-        <button type="submit" className={styles.submit} style={{ width: "100%", marginTop: 20 }}>
-          ログイン
+        <button
+          type="submit"
+          className={styles.submit}
+          style={{ width: "100%", marginTop: 20 }}
+          disabled={submitting}
+        >
+          {submitting ? "ログイン中…" : "ログイン"}
         </button>
       </form>
 
@@ -80,15 +89,6 @@ export function LoginScreen({ onLogin, onNavigateSignup }: LoginScreenProps) {
         </button>
         はこちら
       </div>
-
-      <label className={styles.demoToggle}>
-        <input
-          type="checkbox"
-          checked={simulateFailure}
-          onChange={(e) => setSimulateFailure(e.target.checked)}
-        />
-        プロトタイプ確認用：ログイン失敗時の表示を試す
-      </label>
     </div>
   );
 }

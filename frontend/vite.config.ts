@@ -8,9 +8,13 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      // バックエンド（Spring Boot, :8080）未着手のためプロトタイプでは未使用。
-      // tech-stack.md の構成に合わせて先に定義しておく。
       "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      // aws-infra-design.md 3.4節：写真配信用。本番はNginxが同一オリジンで配信するため、
+      // 開発環境でも同様にViteプロキシで:8080へ転送する
+      "/uploads": {
         target: "http://localhost:8080",
         changeOrigin: true,
       },
