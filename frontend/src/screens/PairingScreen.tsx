@@ -10,6 +10,7 @@ interface PairingScreenProps {
   usageLimit: number;
   suggestion: PairingSuggestion | null;
   onSuggestionGenerated: (suggestion: PairingSuggestion) => void;
+  onSuggestionCleared: () => void;
   onSaveAsRecord: (suggestion: PairingSuggestion) => void;
 }
 
@@ -18,6 +19,7 @@ export function PairingScreen({
   usageLimit,
   suggestion,
   onSuggestionGenerated,
+  onSuggestionCleared,
   onSaveAsRecord,
 }: PairingScreenProps) {
   const [sweetName, setSweetName] = useState("");
@@ -36,6 +38,9 @@ export function PairingScreen({
     if (questions.length > 0) {
       setQuestions([]);
       setAnswers([]);
+    }
+    if (suggestion) {
+      onSuggestionCleared();
     }
   }
 
