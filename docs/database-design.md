@@ -1,4 +1,4 @@
-# Chococo データベース設計書（ER図・テーブル定義）
+# Otomo データベース設計書（ER図・テーブル定義）
 
 作成日：2026年8月15日（初版）
 対象：[requirements.md](./requirements.md) 3.1 MVP機能に対応

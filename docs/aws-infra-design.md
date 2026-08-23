@@ -1,4 +1,4 @@
-# Chococo AWSインフラ構成
+# Otomo AWSインフラ構成
 
 作成日：2026年8月15日（初版）
 [requirements.md](./requirements.md) 4章「インフラ費用はAWS無料枠の範囲内での運用を前提」を満たす構成を設計する。開発期間は約1ヶ月（[requirements.md](./requirements.md) 1.2）のため、12ヶ月間有効なAWS無料枠に十分収まる前提で構成する。

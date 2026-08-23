@@ -1,4 +1,4 @@
-# Chococo 機能設計書
+# Otomo 機能設計書
 
 作成日：2026年8月15日（初版）
 [requirements.md](./requirements.md) 3.1 MVP機能を、画面・操作単位のルールまで分解したもの。画面のUI構成は[screen-flow.md](./screen-flow.md)、APIの入出力は[api-spec.md](./api-spec.md)、データ構造は[database-design.md](./database-design.md)、認証の実装詳細は[auth-design.md](./auth-design.md)を参照。本ドキュメントはその間をつなぐ「業務ルール」の定義に専念する。

@@ -1,4 +1,4 @@
-# Chococo — Claude Code ガイド
+# Otomo — Claude Code ガイド
 
 ## プロジェクト概要
 

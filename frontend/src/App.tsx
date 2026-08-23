@@ -133,7 +133,7 @@ export default function App() {
         return (
           <>
             <AppHeader
-              title="Chococo"
+              title="Otomo"
               onLogoClick={() => setScreen({ kind: "main", tab: "pairing" })}
               onAdd={
                 screen.tab === "records"
