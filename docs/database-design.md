@@ -157,6 +157,8 @@ erDiagram
 | expires_at | DATETIME | NOT NULL | 有効期限（発行から14日後） |
 | created_at | DATETIME | NOT NULL | 発行日時 |
 
+**インデックス**：`user_id` に単一カラムインデックス（`idx_refresh_tokens_user_id`）。ローテーション・失効・ログアウト時に`user_id`条件で該当レコードを検索するため。
+
 `user_id` にUNIQUE制約は付けない。1ユーザーが複数端末で同時にログインすることを許容し、それぞれ別のレコードとして管理する（[auth-design.md](./auth-design.md) 4-2節）。ローテーション・失効のたびに該当レコードを削除する運用のため、`updated_at`は持たない。
 
 ## 3. 決定事項（2026年8月15日 追記）
