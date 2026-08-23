@@ -1,0 +1,15 @@
+[Unit]
+Description=Chococo Backend (Spring Boot)
+After=network.target
+
+[Service]
+Type=simple
+User=chococo
+WorkingDirectory=/opt/chococo/backend
+EnvironmentFile=/etc/chococo/backend.env
+ExecStart=/usr/bin/java -jar /opt/chococo/backend/app.jar
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
