@@ -5,12 +5,12 @@
 食べたいスイーツに合う飲み物（主にコーヒー）をAIが提案してくれるWebアプリ。あわせて食べたスイーツの記録をインスタグラム風のUIで残せる（詳細は[要件定義](docs/requirements.md)）。スクール課題であり、Java（Spring Boot）+ Reactの使用が必須。
 
 - **フロントエンド**: React 19 + TypeScript (Vite)、CSS Modules、fetch API（[技術スタック](docs/tech-stack.md)）
-- **バックエンド**: Java 21、Spring Boot 3.5系、Spring Security（JWT + リフレッシュトークン）、Spring Data JPA
+- **バックエンド**: Java 21、Spring Boot 4.1系（[tech-stack.md](docs/tech-stack.md)記載の3.5系から変更。backend/README.md参照）、Spring Security（JWT + リフレッシュトークン）、Spring Data JPA
 - **DB**: MySQL 8.0（ローカルはDocker、本番はAWS RDS）
 - **AI連携**: Anthropic Claude API（`claude-haiku-4-5`、Spring `RestClient`で直接HTTP呼び出し）
 - **インフラ**: AWS EC2（t3.micro）+ RDS（[AWSインフラ構成](docs/aws-infra-design.md)）、無料枠内での運用が前提
 
-設計ドキュメントは`docs/`に9本まとまっている（要件定義・画面遷移・機能設計・API仕様・DB設計・認証設計・インフラ・技術スタック・ワイヤーフレーム）。実装前に該当ドキュメントを必ず参照すること。`backend/`・`frontend/`のプロジェクトセットアップは未着手（ドキュメント整備段階）。
+設計ドキュメントは`docs/`に9本まとまっている（要件定義・画面遷移・機能設計・API仕様・DB設計・認証設計・インフラ・技術スタック・ワイヤーフレーム）。実装前に該当ドキュメントを必ず参照すること。`backend/`・`frontend/`とも実装済みで、フロントエンド・バックエンドの実結合も完了している（AWS本番デプロイのみ未着手）。
 
 ---
 
