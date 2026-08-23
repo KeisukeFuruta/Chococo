@@ -10,6 +10,17 @@ export interface PairingSuggestion {
   remainingCount: number;
 }
 
+// api-spec.md 3.4節：AIがスイーツ名から動的に生成する追加質問（選択式）
+export interface PairingQuestion {
+  question: string;
+  options: string[];
+}
+
+export interface PairingAnswer {
+  question: string;
+  answer: string;
+}
+
 // api-spec.md 3.5節：カレンダー表示用の一覧アイテム
 export interface RecordListItem {
   id: number;

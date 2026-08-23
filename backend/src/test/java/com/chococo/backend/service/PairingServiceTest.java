@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.chococo.backend.client.AnthropicClient;
+import com.chococo.backend.dto.pairing.PairingSuggestionRequest;
 import com.chococo.backend.entity.CoffeeBean;
 import com.chococo.backend.entity.PairingSuggestion;
 import com.chococo.backend.entity.RoastLevel;
@@ -54,13 +55,13 @@ class PairingServiceTest {
             return saved;
         });
 
-        var response = pairingService.suggest(7L, "ショートケーキ");
+        var response = pairingService.suggest(7L, "ショートケーキ", List.of());
 
         assertThat(response.pairingSuggestionId()).isEqualTo(99L);
         assertThat(response.coffeeBean().id()).isEqualTo(2L);
         assertThat(response.coffeeBean().roastLevel()).isEqualTo("ダーク");
         assertThat(response.reason()).isEqualTo("良い理由です");
-        assertThat(response.remainingCount()).isEqualTo(6); // 10 - 3 - 1
+        assertThat(response.remainingCount()).isEqualTo(1); // 5 - 3 - 1
 
         ArgumentCaptor<PairingSuggestion> captor = ArgumentCaptor.forClass(PairingSuggestion.class);
         verify(pairingSuggestionRepository).save(captor.capture());
@@ -70,9 +71,9 @@ class PairingServiceTest {
 
     @Test
     void suggest_whenDailyLimitAlreadyReached_throwsWithoutCallingAiOrSaving() {
-        stubUsedCount(10);
+        stubUsedCount(5);
 
-        assertThatThrownBy(() -> pairingService.suggest(7L, "プリン"))
+        assertThatThrownBy(() -> pairingService.suggest(7L, "プリン", List.of()))
                 .isInstanceOf(RateLimitExceededException.class);
 
         verifyNoInteractions(anthropicClient);
@@ -80,11 +81,27 @@ class PairingServiceTest {
     }
 
     @Test
+    void suggest_withAnswers_includesQuestionAndAnswerTextInThePromptSentToAi() {
+        stubUsedCount(0);
+        stubAiResponse("{\"coffeeBeanId\": 1, \"reason\": \"合います\"}");
+        when(pairingSuggestionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<PairingSuggestionRequest.AnswerDto> answers = List.of(
+                new PairingSuggestionRequest.AnswerDto("どんな味わいが好みですか？", "甘さ控えめ"));
+
+        pairingService.suggest(1L, "モンブラン", answers);
+
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(anthropicClient).complete(promptCaptor.capture());
+        assertThat(promptCaptor.getValue()).contains("どんな味わいが好みですか？").contains("甘さ控えめ");
+    }
+
+    @Test
     void suggest_whenAiChoosesABeanIdOutsideTheCandidateList_throwsAiServiceException_andDoesNotSave() {
         stubUsedCount(0);
         stubAiResponse("{\"coffeeBeanId\": 999, \"reason\": \"存在しない豆\"}");
 
-        assertThatThrownBy(() -> pairingService.suggest(1L, "モンブラン")).isInstanceOf(AiServiceException.class);
+        assertThatThrownBy(() -> pairingService.suggest(1L, "モンブラン", List.of())).isInstanceOf(AiServiceException.class);
 
         verify(pairingSuggestionRepository, never()).save(any());
     }
@@ -94,7 +111,7 @@ class PairingServiceTest {
         stubUsedCount(0);
         stubAiResponse("申し訳ありませんが選べません");
 
-        assertThatThrownBy(() -> pairingService.suggest(1L, "モンブラン")).isInstanceOf(AiServiceException.class);
+        assertThatThrownBy(() -> pairingService.suggest(1L, "モンブラン", List.of())).isInstanceOf(AiServiceException.class);
         verify(pairingSuggestionRepository, never()).save(any());
     }
 
@@ -104,7 +121,7 @@ class PairingServiceTest {
         stubAiResponse("以下の通り選びました。\n```json\n{\"coffeeBeanId\": 1, \"reason\": \"合います\"}\n```\nよろしくお願いします。");
         when(pairingSuggestionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = pairingService.suggest(1L, "モンブラン");
+        var response = pairingService.suggest(1L, "モンブラン", List.of());
 
         assertThat(response.coffeeBean().id()).isEqualTo(1L);
         assertThat(response.reason()).isEqualTo("合います");
@@ -115,7 +132,7 @@ class PairingServiceTest {
         stubUsedCount(0);
         when(anthropicClient.complete(anyString())).thenThrow(new AiServiceException("timeout"));
 
-        assertThatThrownBy(() -> pairingService.suggest(1L, "モンブラン")).isInstanceOf(AiServiceException.class);
+        assertThatThrownBy(() -> pairingService.suggest(1L, "モンブラン", List.of())).isInstanceOf(AiServiceException.class);
         verify(pairingSuggestionRepository, never()).save(any());
     }
 
@@ -126,9 +143,37 @@ class PairingServiceTest {
         var usage = pairingService.getUsage(5L);
 
         assertThat(usage.usedCount()).isEqualTo(4);
-        assertThat(usage.limit()).isEqualTo(10);
-        assertThat(usage.remainingCount()).isEqualTo(6);
+        assertThat(usage.limit()).isEqualTo(5);
+        assertThat(usage.remainingCount()).isEqualTo(1);
         assertThat(usage.resetAt()).endsWith("+09:00");
+    }
+
+    @Test
+    void generateQuestions_returnsParsedQuestions_andDoesNotSaveOrConsumeUsage() {
+        stubUsedCount(0);
+        stubAiResponse("""
+                {"questions": [
+                  {"question": "どんな味わいが好みですか？", "options": ["甘さ控えめ", "しっかり甘い"]},
+                  {"question": "主な材料は？", "options": ["生クリーム", "チョコレート", "フルーツ"]}
+                ]}
+                """);
+
+        var response = pairingService.generateQuestions(1L, "モンブラン");
+
+        assertThat(response.questions()).hasSize(2);
+        assertThat(response.questions().get(0).question()).isEqualTo("どんな味わいが好みですか？");
+        assertThat(response.questions().get(0).options()).containsExactly("甘さ控えめ", "しっかり甘い");
+        verify(pairingSuggestionRepository, never()).save(any());
+    }
+
+    @Test
+    void generateQuestions_whenDailyLimitAlreadyReached_throwsWithoutCallingAi() {
+        stubUsedCount(5);
+
+        assertThatThrownBy(() -> pairingService.generateQuestions(1L, "モンブラン"))
+                .isInstanceOf(RateLimitExceededException.class);
+
+        verifyNoInteractions(anthropicClient);
     }
 
     private void stubUsedCount(long count) {

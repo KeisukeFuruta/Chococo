@@ -35,7 +35,7 @@
 | 404 | NOT_FOUND | 指定IDのリソースが存在しない、または他ユーザーのリソースを指定（存在有無を推測されないよう区別しない。[auth-design.md](./auth-design.md) 10節） |
 | 409 | EMAIL_ALREADY_EXISTS | 新規登録時にメールアドレスが登録済み |
 | 409 | PAIRING_SUGGESTION_ALREADY_USED | 既に記録に紐付け済みのpairingSuggestionIdを指定 |
-| 429 | RATE_LIMIT_EXCEEDED | AI利用上限（1日10回・JST基準）に到達 |
+| 429 | RATE_LIMIT_EXCEEDED | AI利用上限（1日5回・JST基準）に到達 |
 | 502 | AI_SERVICE_ERROR | 外部AI APIの呼び出し失敗・タイムアウト |
 | 500 | INTERNAL_ERROR | 想定外のサーバーエラー |
 
@@ -48,6 +48,7 @@
 | POST | `/api/auth/refresh` | アクセストークンの再発行 | 不要（リフレッシュトークンで認証） | 全画面共通（バックグラウンド処理） |
 | POST | `/api/auth/logout` | ログアウト（リフレッシュトークンの失効） | 不要（リフレッシュトークンで認証） | S3, S4（ヘッダー操作） |
 | GET | `/api/pairings/usage` | 本日のAI利用回数・残り回数を取得 | 必要 | S3, S5 |
+| POST | `/api/pairings/questions` | 追加質問（1〜2問・選択式）を生成 | 必要 | S3, S5 |
 | POST | `/api/pairings` | AIペアリング提案を取得 | 必要 | S3, S5 |
 | GET | `/api/records` | 記録一覧を取得（月指定） | 必要 | S4 |
 | POST | `/api/records` | 記録を新規作成 | 必要 | S5 |
@@ -102,16 +103,18 @@
 **レスポンス 200**
 ```json
 {
-  "usedCount": 6,
-  "limit": 10,
-  "remainingCount": 4,
+  "usedCount": 2,
+  "limit": 5,
+  "remainingCount": 3,
   "resetAt": "2026-08-16T00:00:00+09:00"
 }
 ```
 
 ---
 
-### 3.4 POST /api/pairings（AIペアリング提案）
+### 3.4 POST /api/pairings/questions（追加質問の生成）
+
+スイーツ名から、コーヒー豆選定に役立つ追加質問（1〜2問・選択式）をAIに動的に生成させる。質問文・選択肢の内容はAIが判断する（[functional-spec.md](./functional-spec.md) 3.2節）。このエンドポイントの呼び出しはAI利用上限のカウント対象外だが、上限に達している場合は呼び出し時点でエラーになる（後続の最終提案が必ず失敗するため）。
 
 **リクエスト**
 ```json
@@ -119,7 +122,41 @@
 ```
 バリデーション：`sweetName` は1〜100文字。
 
-**処理概要**：利用回数を確認 → 上限内なら外部AI APIを呼び出し → `coffee_beans` から最適な豆を選ばせ、理由とともに `pairing_suggestions` に保存 → 結果を返す。S3・S5のどちらから呼ばれても処理内容・利用上限のカウントは共通（[functional-spec.md](./functional-spec.md) 3.2節・3.3節）。
+**レスポンス 200**
+```json
+{
+  "questions": [
+    {
+      "question": "どんな味わいが好みですか？",
+      "options": ["甘さ控えめ", "しっかり甘い", "酸味を感じるもの"]
+    },
+    {
+      "question": "主な材料・トッピングは？",
+      "options": ["生クリーム", "チョコレート", "フルーツ", "ナッツ"]
+    }
+  ]
+}
+```
+
+**エラー**：400 `VALIDATION_ERROR` / 429 `RATE_LIMIT_EXCEEDED`（本日の利用上限に達している場合） / 502 `AI_SERVICE_ERROR`
+
+---
+
+### 3.5 POST /api/pairings（AIペアリング提案）
+
+**リクエスト**
+```json
+{
+  "sweetName": "ショートケーキ",
+  "answers": [
+    { "question": "どんな味わいが好みですか？", "answer": "甘さ控えめ" },
+    { "question": "主な材料・トッピングは？", "answer": "生クリーム" }
+  ]
+}
+```
+バリデーション：`sweetName` は1〜100文字。`answers` は任意（3.4を経由せず直接呼び出すことも許容する）。指定する場合は最大2件、各`question`・`answer`は1〜200文字。
+
+**処理概要**：利用回数を確認 → 上限内なら`answers`を踏まえたプロンプトで外部AI APIを呼び出し → `coffee_beans` から最適な豆を選ばせ、理由とともに `pairing_suggestions` に保存 → 結果を返す。S3・S5のどちらから呼ばれても処理内容・利用上限のカウントは共通（[functional-spec.md](./functional-spec.md) 3.2節・3.3節）。
 
 **レスポンス 201**
 ```json
@@ -142,7 +179,7 @@
 
 ---
 
-### 3.5 GET /api/records（記録一覧・月指定）
+### 3.6 GET /api/records（記録一覧・月指定）
 
 カレンダー表示用に、指定した年月の記録を取得する。
 
@@ -169,11 +206,11 @@
   ]
 }
 ```
-一覧はカレンダー表示に必要な最小項目のみを返す（詳細は3.7）。同一日に複数件ある場合はフロント側で `recordDate` ごとにグルーピングする。`photoUrl` のファイル名は保存時にサーバー側で生成したUUIDであり、記録IDとは無関係（[aws-infra-design.md](./aws-infra-design.md) 3.4節）。
+一覧はカレンダー表示に必要な最小項目のみを返す（詳細は3.8）。同一日に複数件ある場合はフロント側で `recordDate` ごとにグルーピングする。`photoUrl` のファイル名は保存時にサーバー側で生成したUUIDであり、記録IDとは無関係（[aws-infra-design.md](./aws-infra-design.md) 3.4節）。
 
 ---
 
-### 3.6 POST /api/records（記録作成）
+### 3.7 POST /api/records（記録作成）
 
 `multipart/form-data` で送信。
 
@@ -205,29 +242,29 @@
 
 ---
 
-### 3.7 GET /api/records/{id}（記録詳細）
+### 3.8 GET /api/records/{id}（記録詳細）
 
-**レスポンス 200**：3.6のレスポンスと同じ形式
+**レスポンス 200**：3.7のレスポンスと同じ形式
 
 **エラー**：404 `NOT_FOUND`（記録が存在しない、または他ユーザーの記録。区別しない）
 
 ---
 
-### 3.8 PUT /api/records/{id}（記録編集）
+### 3.9 PUT /api/records/{id}（記録編集）
 
-`multipart/form-data`。パートは3.6から `pairingSuggestionId` を除いたもの（AI提案の紐付けは編集不可。写真を差し替えない場合は `photo` パートを省略）。
+`multipart/form-data`。パートは3.7から `pairingSuggestionId` を除いたもの（AI提案の紐付けは編集不可。写真を差し替えない場合は `photo` パートを省略）。
 
 | パート名 | 型 | 必須 | 説明 |
 |---|---|---|---|
 | deletePhoto | text（`"true"`） | 任意 | `"true"` の場合、既存の写真を削除し写真なしの状態にする。このフラグが `"true"` の場合、`photo` パートが同時に送信されても無視する |
 
-**レスポンス 200**：3.6のレスポンスと同じ形式（更新後の内容）
+**レスポンス 200**：3.7のレスポンスと同じ形式（更新後の内容）
 
 **エラー**：400 `VALIDATION_ERROR` / 404 `NOT_FOUND`（記録が存在しない、または他ユーザーの記録。区別しない）
 
 ---
 
-### 3.9 DELETE /api/records/{id}（記録削除）
+### 3.10 DELETE /api/records/{id}（記録削除）
 
 物理削除。DBレコード削除とあわせて `photo_path` が指すファイルもサーバー側から削除する（[database-design.md](./database-design.md) 3章 決定事項No.5）。
 
@@ -237,7 +274,7 @@
 
 ---
 
-### 3.10 POST /api/auth/refresh（アクセストークンの再発行）
+### 3.11 POST /api/auth/refresh（アクセストークンの再発行）
 
 認証ヘッダーは不要（リフレッシュトークン自体が認証情報のため）。アクセストークンが期限切れになった際、フロントエンドがバックグラウンドで自動的に呼び出す想定（[auth-design.md](./auth-design.md) 4-3節）。
 
@@ -260,7 +297,7 @@
 
 ---
 
-### 3.11 POST /api/auth/logout（ログアウト）
+### 3.12 POST /api/auth/logout（ログアウト）
 
 認証ヘッダーは不要。渡されたリフレッシュトークンを`refresh_tokens`から削除し、以後そのトークンでの`/api/auth/refresh`を無効化する。発行済みのアクセストークンは自然に期限が切れるまで（最大1時間）失効しない（[auth-design.md](./auth-design.md) 4-2節）。
 
