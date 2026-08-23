@@ -1,9 +1,7 @@
 package com.chococo.backend.exception;
 
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-@Getter
 public abstract class ApiException extends RuntimeException {
 
     private final HttpStatus status;
@@ -13,5 +11,13 @@ public abstract class ApiException extends RuntimeException {
         super(message);
         this.status = status;
         this.errorCode = errorCode;
+    }
+
+    public HttpStatus getStatus() {
+        return status;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
     }
 }
