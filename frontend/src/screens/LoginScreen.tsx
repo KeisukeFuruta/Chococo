@@ -38,7 +38,7 @@ export function LoginScreen({ onLogin, onNavigateSignup }: LoginScreenProps) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.logo}>🍫☕ Chococo</div>
+      <div className={styles.logo}>🍰☕ Otomo</div>
       <form onSubmit={handleSubmit} noValidate>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="login-email">

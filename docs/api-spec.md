@@ -1,4 +1,4 @@
-# Chococo API仕様書
+# Otomo API仕様書
 
 作成日：2026年8月15日（初版）
 対象：[screen-flow.md](./screen-flow.md) の各画面操作、[database-design.md](./database-design.md) のテーブル設計に対応

@@ -15,7 +15,7 @@ const STEPS: TutorialStepConfig[] = [
   {
     targetKey: null,
     requiredTab: "pairing",
-    title: "Chococoへようこそ🍫☕",
+    title: "Otomoへようこそ🍰☕",
     description: "食べたいスイーツに合うコーヒーを、AIが理由つきで提案します。かんたんに使い方をご案内します。",
   },
   {

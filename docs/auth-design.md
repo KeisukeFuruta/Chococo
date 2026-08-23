@@ -1,4 +1,4 @@
-# Chococo 認証・認可設計
+# Otomo 認証・認可設計
 
 作成日：2026年8月15日（初版）
 [requirements.md](./requirements.md)・[functional-spec.md](./functional-spec.md) 3.1節を実装レベルに落とし込んだもの。SocialMediaCopyプロジェクトの`auth-design.md`を参考に、アクセストークン＋リフレッシュトークン方式を採用した。対象はユーザー登録・ログイン・トークン発行検証・保護APIへのアクセス制御まで（記録の所有者チェック（404統一）は[functional-spec.md](./functional-spec.md) 3.1節「認可（本人確認）」を参照）。
@@ -14,7 +14,7 @@
 }
 ```
 
-- `sub`：ユーザーID（`users.id`を文字列化したもの）。Chococoの全テーブルはBIGINT連番のため、UUIDは使わない
+- `sub`：ユーザーID（`users.id`を文字列化したもの）。Otomoの全テーブルはBIGINT連番のため、UUIDは使わない
 - `email`：カスタムclaim。`JwtAuthenticationFilter`は署名検証に成功したJWTの`sub`・`email`claimだけから`AuthenticatedUser`を直接構築し、`SecurityContext`にセットする。DBへの問い合わせは一切行わない（ユーザーの再ロードという処理自体が存在しない）
 - `iat` / `exp`：標準claim。発行時刻・有効期限
 

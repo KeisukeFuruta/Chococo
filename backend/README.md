@@ -1,4 +1,4 @@
-# Chococo backend
+# Otomo backend
 
 Spring Boot 4.1系 + Java 21。ドキュメントは[../docs/](../docs/)を参照。
 

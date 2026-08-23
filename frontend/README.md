@@ -1,4 +1,4 @@
-# Chococo frontend
+# Otomo frontend
 
 React 19 + TypeScript (Vite) 製のフロントエンド。バックエンドAPI（認証・AIペアリング提案・記録CRUD）と実際に通信する。詳細は[プロジェクトルートのREADME](../README.md)・[設計ドキュメント](../docs/)を参照。
 
