@@ -111,6 +111,9 @@ export function RecordFormScreen({
       setQuestions([]);
       setAnswers([]);
     }
+    if (suggestion) {
+      setSuggestion(undefined);
+    }
   }
 
   async function handleStartQuestions() {

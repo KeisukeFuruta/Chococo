@@ -148,6 +148,7 @@ export default function App() {
                 usageLimit={usageLimit}
                 suggestion={lastSuggestion}
                 onSuggestionGenerated={handleSuggestionGenerated}
+                onSuggestionCleared={() => setLastSuggestion(null)}
                 onSaveAsRecord={(suggestion) =>
                   setScreen({ kind: "recordCreate", origin: "pairing", suggestion })
                 }
