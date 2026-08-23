@@ -19,6 +19,28 @@
 
 Otomoは「食べたいスイーツを起点に、AIが理由つきでペアリングを提案し、その結果を記録として残せる」点が差別化ポイントです。
 
+## デモ
+
+### ユーザー認証（新規登録・ログアウト・ログイン）
+
+![ユーザー認証のデモ](docs/media/auth-demo.gif)
+
+### ペアリング提案（AI連携）
+
+![ペアリング提案のデモ](docs/media/pairing-demo.gif)
+
+### 記録の保存
+
+![記録の保存のデモ](docs/media/record-save-demo.gif)
+
+### 記録一覧表示（カレンダー）
+
+![記録一覧表示のデモ](docs/media/records-calendar-demo.gif)
+
+### 記録の編集・削除
+
+![記録の編集・削除のデモ](docs/media/record-edit-delete-demo.gif)
+
 ## 機能（MVP）
 
 | No. | 機能 | 概要 |
