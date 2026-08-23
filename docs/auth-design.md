@@ -15,14 +15,15 @@
 ```
 
 - `sub`：ユーザーID（`users.id`を文字列化したもの）。Chococoの全テーブルはBIGINT連番のため、UUIDは使わない
-- `email`：カスタムclaim。`JwtAuthenticationFilter`がこの値でユーザーを再ロードする際に使用し、DBへの追加問い合わせを避ける
+- `email`：カスタムclaim。`JwtAuthenticationFilter`は署名検証に成功したJWTの`sub`・`email`claimだけから`AuthenticatedUser`を直接構築し、`SecurityContext`にセットする。DBへの問い合わせは一切行わない（ユーザーの再ロードという処理自体が存在しない）
 - `iat` / `exp`：標準claim。発行時刻・有効期限
 
 ## 2. 署名アルゴリズム・鍵管理
 
-- HS256（HMAC-SHA256）で署名。ライブラリは`jjwt`（0.12.x系。[tech-stack.md](./tech-stack.md)参照）
-- 鍵は`jwt.secret`（Base64エンコードされた256bit乱数、`openssl rand -base64 32`で生成）から`Keys.hmacShaKeyFor`で生成
-- ローカル開発では`.env`等で管理し、本番はEC2上の環境変数で管理する（[aws-infra-design.md](./aws-infra-design.md)参照）。AWS Secrets Managerの利用はコスト・スコープの都合上、本課題では対象外とする
+- HS256（HMAC-SHA256）で署名する想定。ライブラリは`jjwt`（0.12.x系。[tech-stack.md](./tech-stack.md)参照）
+- 鍵は`jwt.secret`（Base64エンコードされた256bit乱数、`openssl rand -base64 32`で生成）から`Keys.hmacShaKeyFor`で生成する。`Keys.hmacShaKeyFor`は渡された鍵のビット長に応じて署名アルゴリズムを自動選択する仕様のため、32バイト（256bit）ちょうどの鍵を渡した場合にのみHS256になる
+- 本番（`application-prod.properties`）は`JWT_SECRET`環境変数が未設定の場合にアプリケーションが起動しない構成とし、必ず32バイト鍵を設定する。ローカル開発（`application.properties`）では`JWT_SECRET`は任意で、未設定時は60バイトのフォールバック文字列（`chococo.jwt.secret`のデフォルト値）で起動する。このフォールバック鍵は32バイトではないため実際の署名はHS384になる（本番相当のHS256で検証したい場合は、ローカルでも`openssl rand -base64 32`で生成した32バイト鍵を`JWT_SECRET`に設定すること）
+- 本番はEC2上の環境変数で管理する（[aws-infra-design.md](./aws-infra-design.md)参照）。AWS Secrets Managerの利用はコスト・スコープの都合上、本課題では対象外とする
 
 ## 3. 有効期限
 
@@ -57,12 +58,17 @@
 - リフレッシュ自体が失敗した場合（リフレッシュトークンも無効・期限切れ）のみ、ログイン画面（S1）へ強制的に遷移する
 - **並行リクエストの排他制御**：アクセストークン期限切れ時、複数のAPIリクエストがほぼ同時に401を受け取ると、それぞれが独立して`/api/auth/refresh`を呼び出してしまう。リフレッシュトークンは使用のたびにローテーション（旧トークンを削除）するため、2つ目以降のリフレッシュ呼び出しは失敗し、意図しない強制ログアウトを引き起こす。これを防ぐため、APIクライアント側で「リフレッシュ中フラグ」を持たせ、リフレッシュ処理中に401を受け取った他のリクエストは、進行中のリフレッシュの完了（`Promise`）を待ってから新しいアクセストークンで再試行するキューイング処理を実装する（[tech-stack.md](./tech-stack.md) APIクライアント参照）
 
+### 4-4. フロントエンドでのトークン保存場所
+
+- アクセストークン・リフレッシュトークンはいずれも`localStorage`に保存する。Cookieベース（`HttpOnly`属性等）は採用しない
+- XSSにより`localStorage`の内容を読み取られた場合、両トークンとも漏洩しうる点はトレードオフとして受容する。本課題ではCSPやサニタイズ等の基本的なXSS対策で防御し、`HttpOnly` Cookie相当の防御は範囲外とする
+
 ## 5. トークン検証フロー（アクセストークン）
 
 1. リクエストの`Authorization: Bearer <token>`ヘッダーを`JwtAuthenticationFilter`（`OncePerRequestFilter`、`UsernamePasswordAuthenticationFilter`の前段に配置）が読み取る
 2. 署名検証・有効期限チェックを行う
 3. 検証成功時：`email`claimからユーザーをロードし、`SecurityContext`に認証情報をセットする
-4. 検証失敗時（期限切れ・改ざん・不正形式・ユーザー不在など）：例外を投げず`SecurityContext`を未設定のまま次のフィルタへ処理を渡す。「トークンが無い場合」と「トークンが不正な場合」を同じ経路で一律401として扱うため
+4. 検証失敗時（期限切れ・改ざん・不正形式など）：例外を投げず`SecurityContext`を未設定のまま次のフィルタへ処理を渡す。「トークンが無い場合」と「トークンが不正な場合」を同じ経路で一律401として扱うため。なお、アクセストークンの検証はJWTの署名・有効期限のみで完結し、DBに対するユーザー存在確認は行わない。そのため、発行後にユーザーが削除された場合でも、有効期限内のアクセストークンであれば認証は成功する（この課題ではユーザー削除機能自体を提供しないため実運用上の影響はない）
 5. 保護対象のエンドポイントに未認証のままアクセスされた場合、`CustomAuthenticationEntryPoint`が401 `UNAUTHORIZED`のJSONを返す
 
 ## 6. Spring Securityのフィルタチェーン構成
