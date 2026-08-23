@@ -1,0 +1,84 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+/* 実際のクリックを全画面でブロックする（見た目上は透明。暗転はcutoutのbox-shadowが担う） */
+.clickBlocker {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+
+/* box-shadowの外周塗りつぶしトリックで「穴あき」の暗転を表現する。要素自体はpointer-events: noneで操作不可のまま見せるだけ */
+.cutout {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(59, 42, 32, 0.68);
+  pointer-events: none;
+  transition:
+    top 0.25s ease,
+    left 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
+}
+
+.card {
+  position: fixed;
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition:
+    top 0.25s ease,
+    left 0.25s ease;
+}
+
+.stepCount {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.description {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.skip {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.next {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 22px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}

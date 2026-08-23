@@ -3,9 +3,12 @@ import { logout as apiLogout } from "./api/auth";
 import { AUTH_EXPIRED_EVENT } from "./api/client";
 import { getPairingUsage } from "./api/pairings";
 import { tokenStorage } from "./api/tokenStorage";
+import { completeTutorial, getCurrentUser } from "./api/users";
 import styles from "./App.module.css";
 import { AppHeader } from "./components/AppHeader";
 import { TabBar } from "./components/TabBar";
+import { TutorialOverlay } from "./components/tutorial/TutorialOverlay";
+import { TutorialTargetsProvider } from "./components/tutorial/TutorialTargetsContext";
 import { LoginScreen } from "./screens/LoginScreen";
 import { PairingScreen } from "./screens/PairingScreen";
 import { RecordDetailScreen } from "./screens/RecordDetailScreen";
@@ -24,15 +27,28 @@ export default function App() {
   const [usageRemaining, setUsageRemaining] = useState<number | null>(null);
   const [usageLimit, setUsageLimit] = useState(DEFAULT_USAGE_LIMIT);
   const [lastSuggestion, setLastSuggestion] = useState<PairingSuggestion | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     function handleAuthExpired() {
       setAuthenticated(false);
       setLastSuggestion(null);
+      setShowTutorial(false);
       setScreen({ kind: "login" });
     }
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, []);
+
+  // 既存のリフレッシュトークンでログイン状態を復元した場合（リロード等）、チュートリアル完了状況をサーバーに問い合わせる。
+  // ログイン・サインアップ直後はレスポンスに含まれるuserで既に判定済みのため、ここでは呼ばない
+  useEffect(() => {
+    if (!tokenStorage.getRefreshToken()) return;
+    getCurrentUser()
+      .then((user) => setShowTutorial(!user.tutorialCompleted))
+      .catch(() => {
+        // 取得失敗時はチュートリアルを表示しないだけで、他の機能には影響しない
+      });
   }, []);
 
   // api-spec.md 3.3節：S3（ペアリング提案画面）とS5の入り口②（記録作成のAI提案エリア）表示時に利用状況を取得する
@@ -56,9 +72,10 @@ export default function App() {
     };
   }, [authenticated, screen]);
 
-  function handleAuthenticated() {
+  function handleAuthenticated(user: { tutorialCompleted: boolean }) {
     setAuthenticated(true);
     setScreen({ kind: "main", tab: "pairing" });
+    setShowTutorial(!user.tutorialCompleted);
   }
 
   async function handleLogout() {
@@ -66,7 +83,17 @@ export default function App() {
     setAuthenticated(false);
     setLastSuggestion(null);
     setUsageRemaining(null);
+    setShowTutorial(false);
     setScreen({ kind: "login" });
+  }
+
+  async function handleTutorialFinish() {
+    setShowTutorial(false);
+    try {
+      await completeTutorial();
+    } catch {
+      // 失敗しても次回また表示されるだけなので致命的ではない
+    }
   }
 
   function handleSuggestionGenerated(suggestion: PairingSuggestion) {
@@ -75,9 +102,18 @@ export default function App() {
   }
 
   return (
-    <div className={styles.shell}>
-      <div className={styles.body}>{renderScreen()}</div>
-    </div>
+    <TutorialTargetsProvider>
+      <div className={styles.shell}>
+        <div className={styles.body}>{renderScreen()}</div>
+      </div>
+      {showTutorial && authenticated && screen.kind === "main" && (
+        <TutorialOverlay
+          activeTab={screen.tab}
+          onNavigateTab={(tab) => setScreen({ kind: "main", tab })}
+          onFinish={handleTutorialFinish}
+        />
+      )}
+    </TutorialTargetsProvider>
   );
 
   function renderScreen() {

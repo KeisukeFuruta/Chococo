@@ -24,6 +24,9 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Column(name = "tutorial_completed_at")
+    private Instant tutorialCompletedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -57,6 +60,14 @@ public class User {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public Instant getTutorialCompletedAt() {
+        return tutorialCompletedAt;
+    }
+
+    public void setTutorialCompletedAt(Instant tutorialCompletedAt) {
+        this.tutorialCompletedAt = tutorialCompletedAt;
     }
 
     public Instant getCreatedAt() {

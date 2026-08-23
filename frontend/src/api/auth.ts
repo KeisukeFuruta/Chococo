@@ -4,7 +4,7 @@ import { tokenStorage } from "./tokenStorage";
 interface AuthResponse {
   token: string;
   refreshToken: string;
-  user: { id: number; email: string };
+  user: { id: number; email: string; tutorialCompleted: boolean };
 }
 
 export async function signup(email: string, password: string): Promise<AuthResponse["user"]> {

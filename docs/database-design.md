@@ -17,6 +17,7 @@ erDiagram
         bigint id PK
         varchar email UK "NOT NULL"
         varchar password_hash "NOT NULL"
+        datetime tutorial_completed_at "NULLABLE。初回チュートリアル完了日時"
         datetime created_at
         datetime updated_at
     }
@@ -72,6 +73,7 @@ erDiagram
 | id | BIGINT | PK, AUTO_INCREMENT | ユーザーID |
 | email | VARCHAR(255) | UNIQUE, NOT NULL | ログインID兼用 |
 | password_hash | VARCHAR(255) | NOT NULL | BCrypt等でハッシュ化して保存 |
+| tutorial_completed_at | DATETIME | NULLABLE | 初回チュートリアルを完了（スキップ含む）した日時。NULLの間は未完了 |
 | created_at | DATETIME | NOT NULL | 作成日時 |
 | updated_at | DATETIME | NOT NULL | 更新日時 |
 
@@ -169,6 +171,7 @@ erDiagram
 | （4） | `coffee_beans` の初期データ件数・分類軸 | 本表とは別に2.2節「シードデータ」で確定済み | 決定事項リストとしてはNo.4を欠番扱いにせず、ここに参照を残す |
 | 5 | 論理削除の要否 | **物理削除でよい（`deleted_at`は導入しない）** | 記録の編集・削除をMVPに含めることが決定（requirements.md 3.1 No.5）。監査要件がないため、DELETEは物理削除でシンプルに実装する。ただし削除時は `photo_path` が指す画像ファイルもあわせて削除する処理が必要（アプリケーションサーバー内保存のため、DBレコードだけ消すとファイルが残り続ける） |
 | 6 | `records.pairing_suggestion_id` の一意性 | **UNIQUE制約を付ける** | 1つのAI提案から作成できる記録を最大1件に制限する（2.4節参照）。ER図が表現する「1対1」の意図とスキーマを一致させるため |
+| 7 | 初回チュートリアルの完了判定をどう持つか（2026年8月23日追記） | **`users.tutorial_completed_at`（NULL可DATETIME）を追加** | ブール値ではなくNULL可タイムスタンプにすることで、「完了したか」だけでなく「いつ完了したか」も監査目的で残せる。単調な状態（一度trueになったら二度と戻らない）のため、他にフラグ化された状態を持つ必要はない。専用のトークンテーブルは不要（`refresh_tokens`のような使い捨てトークンではなく、単純な完了フラグのため） |
 
 ## 4. 残っている未確定事項
 

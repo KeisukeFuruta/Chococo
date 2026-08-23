@@ -4,7 +4,7 @@ import { ApiError } from "../api/client";
 import styles from "./LoginScreen.module.css";
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  onLogin: (user: { tutorialCompleted: boolean }) => void;
   onNavigateSignup: () => void;
 }
 
@@ -27,8 +27,8 @@ export function LoginScreen({ onLogin, onNavigateSignup }: LoginScreenProps) {
 
     setSubmitting(true);
     try {
-      await login(email, password);
-      onLogin();
+      const user = await login(email, password);
+      onLogin(user);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "ログインに失敗しました");
     } finally {
