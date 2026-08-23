@@ -1,3 +1,4 @@
+import { useTutorialTargetRef } from "./tutorial/useTutorialTargets";
 import styles from "./AppHeader.module.css";
 
 interface AppHeaderProps {
@@ -8,6 +9,8 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, onLogoClick, onAdd, onLogout }: AppHeaderProps) {
+  const addButtonRef = useTutorialTargetRef("add-record-button");
+
   return (
     <header className={styles.header}>
       <button type="button" className={styles.logoButton} onClick={onLogoClick}>
@@ -16,6 +19,7 @@ export function AppHeader({ title, onLogoClick, onAdd, onLogout }: AppHeaderProp
       <div className={styles.actions}>
         {onAdd && (
           <button
+            ref={addButtonRef}
             type="button"
             className={styles.iconButton}
             onClick={onAdd}

@@ -55,6 +55,8 @@
 | GET | `/api/records/{id}` | 記録詳細を取得 | 必要 | S6 |
 | PUT | `/api/records/{id}` | 記録を編集 | 必要 | S7 |
 | DELETE | `/api/records/{id}` | 記録を削除 | 必要 | S6 |
+| GET | `/api/users/me` | 現在のユーザー情報を取得 | 必要 | 全画面共通（起動時のチュートリアル判定） |
+| POST | `/api/users/me/tutorial/complete` | 初回チュートリアルの完了（スキップ含む）を記録 | 必要 | 初回チュートリアルオーバーレイ |
 
 ## 3. エンドポイント詳細
 
@@ -74,10 +76,10 @@
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
   "refreshToken": "k3x9F2mZ...（Base64URLの不透明な文字列）",
-  "user": { "id": 1, "email": "user@example.com" }
+  "user": { "id": 1, "email": "user@example.com", "tutorialCompleted": false }
 }
 ```
-`token`はアクセストークン（有効期限1時間）、`refreshToken`はリフレッシュトークン（有効期限14日間）。詳細は[auth-design.md](./auth-design.md)参照。
+`token`はアクセストークン（有効期限1時間）、`refreshToken`はリフレッシュトークン（有効期限14日間）。詳細は[auth-design.md](./auth-design.md)参照。`user.tutorialCompleted`は初回チュートリアルの完了状況（3.13/3.14節）。新規登録直後は常に`false`。
 
 **エラー**：400 `VALIDATION_ERROR` / 409 `EMAIL_ALREADY_EXISTS`
 
@@ -309,6 +311,29 @@
 **レスポンス**：204 No Content
 
 フロントエンド側では、このAPI呼び出しの成否によらずローカルに保持しているアクセストークン・リフレッシュトークンを破棄し、S1（ログイン画面）へ遷移する。
+
+---
+
+### 3.13 GET /api/users/me（現在のユーザー情報取得）
+
+アプリ起動時（既存のリフレッシュトークンでログイン状態を復元した直後）に、初回チュートリアルの完了状況をサーバーに問い合わせるために使用する。ログイン・サインアップ直後は3.1/3.2のレスポンスに含まれる`user`で判定できるため、このAPIを呼ぶ必要はない。
+
+**レスポンス 200**
+```json
+{ "id": 1, "email": "user@example.com", "tutorialCompleted": false }
+```
+
+**エラー**：401 `UNAUTHORIZED`（未認証）
+
+---
+
+### 3.14 POST /api/users/me/tutorial/complete（初回チュートリアル完了）
+
+初回チュートリアルを最後まで見終わった、または「スキップ」した時点で呼び出す。スキップも完了として扱い、以後再表示しない。何度呼び出しても冪等（2回目以降も204を返すのみで状態は変わらない）。
+
+**レスポンス**：204 No Content
+
+**エラー**：401 `UNAUTHORIZED`（未認証）
 
 ## 4. 残っている未確定事項
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "../api/client";
 import { generatePairingQuestions, suggestPairing } from "../api/pairings";
+import { useTutorialTargetRef } from "../components/tutorial/useTutorialTargets";
 import type { PairingQuestion, PairingSuggestion } from "../types";
 import styles from "./PairingScreen.module.css";
 
@@ -25,6 +26,7 @@ export function PairingScreen({
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [questions, setQuestions] = useState<PairingQuestion[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
+  const sweetNameInputRef = useTutorialTargetRef("sweet-name-input");
 
   const limitReached = usageRemaining === null || usageRemaining <= 0;
   const allAnswered = questions.length > 0 && answers.every((answer) => answer !== "");
@@ -82,6 +84,7 @@ export function PairingScreen({
       <div className={styles.question}>今日食べたいスイーツは？</div>
       <div>
         <input
+          ref={sweetNameInputRef}
           className={styles.input}
           placeholder="例）ショートケーキ"
           value={sweetName}

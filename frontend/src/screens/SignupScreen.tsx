@@ -5,7 +5,7 @@ import { BackHeader } from "../components/BackHeader";
 import styles from "./LoginScreen.module.css";
 
 interface SignupScreenProps {
-  onSignup: () => void;
+  onSignup: (user: { tutorialCompleted: boolean }) => void;
   onBack: () => void;
 }
 
@@ -37,8 +37,8 @@ export function SignupScreen({ onSignup, onBack }: SignupScreenProps) {
 
     setSubmitting(true);
     try {
-      await signup(email, password);
-      onSignup();
+      const user = await signup(email, password);
+      onSignup(user);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "登録に失敗しました");
     } finally {

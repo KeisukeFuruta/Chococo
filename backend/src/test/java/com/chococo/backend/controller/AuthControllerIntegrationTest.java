@@ -48,7 +48,8 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
-                .andExpect(jsonPath("$.user.email").value("new-user@example.com"));
+                .andExpect(jsonPath("$.user.email").value("new-user@example.com"))
+                .andExpect(jsonPath("$.user.tutorialCompleted").value(false));
 
         User saved = userRepository.findByEmail("new-user@example.com").orElseThrow();
         assertThat(saved.getPasswordHash()).isNotEqualTo("password123");
