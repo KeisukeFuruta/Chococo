@@ -103,3 +103,47 @@ flowchart TB
 - 独自ドメイン取得・HTTPS化の要否とタイミング
 - 開発者のグローバルIPが変動した場合のセキュリティグループ更新運用
 - 複数ユーザーによるテスト利用時の想定同時接続数・負荷（t3.microのスペックで十分か）
+
+## 7. 休止中（2026年9月23日〜）
+
+無料枠終了（有料期間移行）に伴い、独自ドメイン取得・HTTPS化に着手するまでの間、コスト削減のため以下の通り休止した。
+
+**実施内容**
+
+| リソース | 対応 | 備考 |
+|---|---|---|
+| RDS `chococo-db` | 最終スナップショット取得後にインスタンス削除 | スナップショットID: `chococo-db-final-20260923`（ap-northeast-1）。RDSの`stop-db-instance`は最大7日で自動再開してしまうため、長期休止にはスナップショット＋削除を選択した |
+| EC2 `chococo-server`（instance id: `i-0fbea01552feb5b08`） | 停止のみ（削除せず） | EBSボリューム`vol-0a4541370409f900d`（gp3, 20GB）はアタッチされたまま保持し、設定・アプリ本体をそのまま残す |
+| Elastic IP（旧: `13.192.177.161`） | 解放 | 停止中インスタンスに関連付けたまま放置すると課金されるため。独自ドメイン未取得でRoute53等の紐付けもなかったため解放して問題なしと判断 |
+
+休止後の想定残存コストは、RDSスナップショット（20GB）とEC2用EBS（20GB）のストレージ課金のみで月$2〜4程度。
+
+**再開手順**
+
+1. RDSをスナップショットから復元する（新しいエンドポイントが発行されるため、復元後にバックエンドの接続設定を更新すること）
+
+   ```bash
+   aws rds restore-db-instance-from-db-snapshot \
+     --region ap-northeast-1 \
+     --db-instance-identifier chococo-db \
+     --db-snapshot-identifier chococo-db-final-20260923 \
+     --db-instance-class db.t3.micro \
+     --db-subnet-group-name chococo-db-subnet-group \
+     --vpc-security-group-ids sg-024d6ed49dec05157 \
+     --no-publicly-accessible
+   ```
+
+2. EC2インスタンスを起動する
+
+   ```bash
+   aws ec2 start-instances --region ap-northeast-1 --instance-ids i-0fbea01552feb5b08
+   ```
+
+3. 新しいElastic IPを割り当ててEC2に関連付ける
+
+   ```bash
+   aws ec2 allocate-address --region ap-northeast-1 --domain vpc
+   aws ec2 associate-address --region ap-northeast-1 --instance-id i-0fbea01552feb5b08 --allocation-id <上記で発行されたAllocationId>
+   ```
+
+4. 独自ドメイン取得・HTTPS化（3.3節）に着手する場合は、このタイミングで合わせて設定する
